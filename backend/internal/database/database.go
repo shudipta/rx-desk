@@ -19,12 +19,13 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Run GORM auto-migrations to sync schema to SQLite
+	// Auto-migrate tables based on GORM models
 	err = db.AutoMigrate(
 		&models.Patient{},
 		&models.Prescription{},
 		&models.PrescriptionMedicine{},
 		&models.PrescriptionTest{},
+		&models.PrescriptionAdvice{},
 		&models.FavoriteMedicine{},
 		&models.FavoriteTest{},
 		&models.AdviceTemplate{},
@@ -34,7 +35,12 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to run database automigration: %w", err)
 	}
 
+	// Seed database with default data
+	if err := Seed(db); err != nil {
+		return nil, fmt.Errorf("failed to seed database: %w", err)
+	}
+
 	DB = db
-	log.Printf("Successfully connected and migrated SQLite database at: %s", dbPath)
+	log.Printf("Successfully connected, migrated, and seeded SQLite database at: %s", dbPath)
 	return DB, nil
 }

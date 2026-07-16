@@ -52,3 +52,20 @@ Example:
 ```bash
 PORT=9000 DATABASE_URL=my_rx_desk.db go run cmd/server/main.go
 ```
+
+## Database Seeding
+
+You can seed the database with initial favorites and templates using the provided SQL script:
+
+1. **Start the server once** to ensure GORM auto-creates the database tables:
+   ```bash
+   go run cmd/server/main.go
+   ```
+
+2. **Execute the SQL seed script** against the SQLite database file:
+   ```bash
+   sqlite3 rx_desk.db < seed.sql
+   ```
+
+This script populates standard medicines, tests, advice templates, and follow-up templates. Running it multiple times is safe and will not produce duplicate records.
+
