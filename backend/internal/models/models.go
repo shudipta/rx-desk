@@ -21,12 +21,12 @@ type Prescription struct {
 	Patient   *Patient               `json:"patient,omitempty" gorm:"foreignKey:PatientID"`
 	Title     string                 `json:"title" gorm:"not null"` // e.g. "Diabetes Follow-up", "Initial Consultation"
 	VisitType string                 `json:"visit_type" gorm:"not null"`
-	Diagnosis string                 `json:"diagnosis"`
 	Followup  string                 `json:"followup"`
 	Notes     string                 `json:"notes"`
 	Medicines []PrescriptionMedicine `json:"medicines,omitempty" gorm:"foreignKey:PrescriptionID;constraint:OnDelete:CASCADE;"`
 	Tests     []PrescriptionTest     `json:"tests,omitempty" gorm:"foreignKey:PrescriptionID;constraint:OnDelete:CASCADE;"`
 	Advices   []PrescriptionAdvice   `json:"advices,omitempty" gorm:"foreignKey:PrescriptionID;constraint:OnDelete:CASCADE;"`
+	Diagnoses []PrescriptionDiagnosis `json:"diagnoses,omitempty" gorm:"foreignKey:PrescriptionID;constraint:OnDelete:CASCADE;"`
 }
 
 // PrescriptionMedicine represents a single medicine prescribed in a prescription
@@ -51,6 +51,13 @@ type PrescriptionAdvice struct {
 	gorm.Model
 	PrescriptionID uint   `json:"prescription_id" gorm:"not null;index"`
 	AdviceText     string `json:"advice_text" gorm:"not null"`
+}
+
+// PrescriptionDiagnosis represents a single diagnosis record for a prescription
+type PrescriptionDiagnosis struct {
+	gorm.Model
+	PrescriptionID uint   `json:"prescription_id" gorm:"not null;index"`
+	DiagnosisText  string `json:"diagnosis_text" gorm:"not null"`
 }
 
 // FavoriteMedicine represents a doctor's frequently used medicine list

@@ -26,6 +26,7 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 		&models.PrescriptionMedicine{},
 		&models.PrescriptionTest{},
 		&models.PrescriptionAdvice{},
+		&models.PrescriptionDiagnosis{},
 		&models.FavoriteMedicine{},
 		&models.FavoriteTest{},
 		&models.AdviceTemplate{},
