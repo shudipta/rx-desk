@@ -33,6 +33,11 @@ func SetupRouter() *gin.Engine {
 	r.GET("/patients/:id", handlers.GetPatient)
 	r.POST("/patients", handlers.CreatePatient)
 	r.PUT("/patients/:id", handlers.UpdatePatient)
+	r.GET("/patients/:id/prescriptions", handlers.GetPatientPrescriptions)
+
+	// Prescription routes
+	r.POST("/prescriptions", handlers.CreatePrescription)
+	r.GET("/prescriptions/:id", handlers.GetPrescription)
 
 	return r
 }
