@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shudipta/rx-desk/backend/internal/database"
+	"github.com/shudipta/rx-desk/backend/internal/dto"
 	"github.com/shudipta/rx-desk/backend/internal/models"
 	"gorm.io/gorm"
 )
@@ -138,7 +138,7 @@ func CreatePrescription(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, prescription)
+	c.JSON(http.StatusCreated, dto.MapPrescription(prescription))
 }
 
 // GetPrescription retrieves a single prescription by ID preloading Patient, Medicines, Tests, Advices, and Diagnoses
@@ -149,16 +149,7 @@ func GetPrescription(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Prescription not found"})
 		return
 	}
-	c.JSON(http.StatusOK, prescription)
-}
-
-// PatientPrescriptionItem represents the filtered prescription schema returned in the patient prescriptions list
-type PatientPrescriptionItem struct {
-	ID        uint      `json:"id"`
-	Title     string    `json:"title"`
-	VisitType string    `json:"visit_type"`
-	Followup  string    `json:"followup"`
-	CreatedAt time.Time `json:"created_at"`
+	c.JSON(http.StatusOK, dto.MapPrescription(prescription))
 }
 
 // GetPatientPrescriptions retrieves all prescriptions for a specific patient, returning latest first
@@ -184,17 +175,5 @@ func GetPatientPrescriptions(c *gin.Context) {
 		return
 	}
 
-	// Format into desired response structure
-	responseList := make([]PatientPrescriptionItem, len(prescriptions))
-	for i, p := range prescriptions {
-		responseList[i] = PatientPrescriptionItem{
-			ID:        p.ID,
-			Title:     p.Title,
-			VisitType: p.VisitType,
-			Followup:  p.Followup,
-			CreatedAt: p.CreatedAt,
-		}
-	}
-
-	c.JSON(http.StatusOK, responseList)
+	c.JSON(http.StatusOK, dto.MapPatientPrescriptions(prescriptions))
 }

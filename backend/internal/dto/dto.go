@@ -1,0 +1,176 @@
+package dto
+
+import (
+	"time"
+
+	"github.com/shudipta/rx-desk/backend/internal/models"
+)
+
+type PatientDTO struct {
+	ID     uint   `json:"id"`
+	Name   string `json:"name"`
+	Age    int    `json:"age"`
+	Gender string `json:"gender"`
+	Phone  string `json:"phone"`
+}
+
+type PrescriptionDTO struct {
+	ID        uint                       `json:"id"`
+	Title     string                     `json:"title"`
+	VisitType string                     `json:"visit_type"`
+	Followup  string                     `json:"followup"`
+	Notes     string                     `json:"notes"`
+	Patient   *PatientDTO                `json:"patient,omitempty"`
+	Medicines []PrescriptionMedicineDTO   `json:"medicines,omitempty"`
+	Tests     []PrescriptionTestDTO       `json:"tests,omitempty"`
+	Advices   []PrescriptionAdviceDTO     `json:"advices,omitempty"`
+	Diagnoses []PrescriptionDiagnosisDTO `json:"diagnoses,omitempty"`
+}
+
+type PrescriptionMedicineDTO struct {
+	ID           uint   `json:"id"`
+	MedicineName string `json:"medicine_name"`
+	Dosage       string `json:"dosage"`
+	Duration     string `json:"duration"`
+	Instructions string `json:"instructions"`
+}
+
+type PrescriptionTestDTO struct {
+	ID       uint   `json:"id"`
+	TestName string `json:"test_name"`
+}
+
+type PrescriptionAdviceDTO struct {
+	ID         uint   `json:"id"`
+	AdviceText string `json:"advice_text"`
+}
+
+type PrescriptionDiagnosisDTO struct {
+	ID            uint   `json:"id"`
+	DiagnosisText string `json:"diagnosis_text"`
+}
+
+type PatientPrescriptionDTO struct {
+	ID        uint      `json:"id"`
+	Title     string    `json:"title"`
+	VisitType string    `json:"visit_type"`
+	Followup  string    `json:"followup"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// MapPatient maps a models.Patient into PatientDTO
+func MapPatient(p models.Patient) PatientDTO {
+	return PatientDTO{
+		ID:     p.ID,
+		Name:   p.Name,
+		Age:    p.Age,
+		Gender: p.Gender,
+		Phone:  p.Phone,
+	}
+}
+
+// MapPatients maps a slice of models.Patient into a slice of PatientDTO
+func MapPatients(patients []models.Patient) []PatientDTO {
+	dtos := make([]PatientDTO, len(patients))
+	for i, p := range patients {
+		dtos[i] = MapPatient(p)
+	}
+	return dtos
+}
+
+// MapPrescription maps a models.Prescription into PrescriptionDTO
+func MapPrescription(p models.Prescription) PrescriptionDTO {
+	var patientDTO *PatientDTO
+	if p.Patient != nil {
+		pDTO := MapPatient(*p.Patient)
+		patientDTO = &pDTO
+	}
+
+	var medicineDTOs []PrescriptionMedicineDTO
+	if len(p.Medicines) > 0 {
+		medicineDTOs = make([]PrescriptionMedicineDTO, len(p.Medicines))
+		for i, m := range p.Medicines {
+			medicineDTOs[i] = PrescriptionMedicineDTO{
+				ID:           m.ID,
+				MedicineName: m.MedicineName,
+				Dosage:       m.Dosage,
+				Duration:     m.Duration,
+				Instructions: m.Instructions,
+			}
+		}
+	} else {
+		medicineDTOs = []PrescriptionMedicineDTO{}
+	}
+
+	var testDTOs []PrescriptionTestDTO
+	if len(p.Tests) > 0 {
+		testDTOs = make([]PrescriptionTestDTO, len(p.Tests))
+		for i, t := range p.Tests {
+			testDTOs[i] = PrescriptionTestDTO{
+				ID:       t.ID,
+				TestName: t.TestName,
+			}
+		}
+	} else {
+		testDTOs = []PrescriptionTestDTO{}
+	}
+
+	var adviceDTOs []PrescriptionAdviceDTO
+	if len(p.Advices) > 0 {
+		adviceDTOs = make([]PrescriptionAdviceDTO, len(p.Advices))
+		for i, a := range p.Advices {
+			adviceDTOs[i] = PrescriptionAdviceDTO{
+				ID:         a.ID,
+				AdviceText: a.AdviceText,
+			}
+		}
+	} else {
+		adviceDTOs = []PrescriptionAdviceDTO{}
+	}
+
+	var diagnosisDTOs []PrescriptionDiagnosisDTO
+	if len(p.Diagnoses) > 0 {
+		diagnosisDTOs = make([]PrescriptionDiagnosisDTO, len(p.Diagnoses))
+		for i, d := range p.Diagnoses {
+			diagnosisDTOs[i] = PrescriptionDiagnosisDTO{
+				ID:            d.ID,
+				DiagnosisText: d.DiagnosisText,
+			}
+		}
+	} else {
+		diagnosisDTOs = []PrescriptionDiagnosisDTO{}
+	}
+
+	return PrescriptionDTO{
+		ID:        p.ID,
+		Title:     p.Title,
+		VisitType: p.VisitType,
+		Followup:  p.Followup,
+		Notes:     p.Notes,
+		Patient:   patientDTO,
+		Medicines: medicineDTOs,
+		Tests:     testDTOs,
+		Advices:   adviceDTOs,
+		Diagnoses: diagnosisDTOs,
+	}
+}
+
+// MapPatientPrescription maps a single models.Prescription to PatientPrescriptionDTO
+func MapPatientPrescription(p models.Prescription) PatientPrescriptionDTO {
+	return PatientPrescriptionDTO{
+		ID:        p.ID,
+		Title:     p.Title,
+		VisitType: p.VisitType,
+		Followup:  p.Followup,
+		CreatedAt: p.CreatedAt,
+	}
+}
+
+// MapPatientPrescriptions maps a slice of models.Prescription to a slice of PatientPrescriptionDTO
+func MapPatientPrescriptions(prescriptions []models.Prescription) []PatientPrescriptionDTO {
+	dtos := make([]PatientPrescriptionDTO, len(prescriptions))
+	for i, p := range prescriptions {
+		dtos[i] = MapPatientPrescription(p)
+	}
+	return dtos
+}
