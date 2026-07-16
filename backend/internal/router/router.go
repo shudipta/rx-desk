@@ -27,5 +27,12 @@ func SetupRouter() *gin.Engine {
 	// Register routes
 	r.GET("/health", handlers.HealthCheck)
 
+	// Patient routes
+	r.GET("/patients", handlers.ListPatients)
+	r.GET("/patients/search", handlers.SearchPatients)
+	r.GET("/patients/:id", handlers.GetPatient)
+	r.POST("/patients", handlers.CreatePatient)
+	r.PUT("/patients/:id", handlers.UpdatePatient)
+
 	return r
 }
