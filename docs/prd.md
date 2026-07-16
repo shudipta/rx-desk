@@ -1,4 +1,4 @@
-# Rx-Desk: Prescription Acceleration System
+# RxDesk: Prescription Acceleration System
 
 Target:
 Hospital OPD Endocrinologist
