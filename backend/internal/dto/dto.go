@@ -58,6 +58,28 @@ type PatientPrescriptionDTO struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type FavoriteMedicineDTO struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
+
+type FavoriteTestDTO struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
+
+type AdviceTemplateDTO struct {
+	ID      uint   `json:"id"`
+	Title   string `json:"title"`
+	Content string `json:"content"`
+}
+
+type FollowupTemplateDTO struct {
+	ID    uint   `json:"id"`
+	Title string `json:"title"`
+	Value string `json:"value"`
+}
+
 // MapPatient maps a models.Patient into PatientDTO
 func MapPatient(p models.Patient) PatientDTO {
 	return PatientDTO{
@@ -171,6 +193,56 @@ func MapPatientPrescriptions(prescriptions []models.Prescription) []PatientPresc
 	dtos := make([]PatientPrescriptionDTO, len(prescriptions))
 	for i, p := range prescriptions {
 		dtos[i] = MapPatientPrescription(p)
+	}
+	return dtos
+}
+
+// MapFavoriteMedicines maps a slice of models.FavoriteMedicine into a slice of FavoriteMedicineDTO
+func MapFavoriteMedicines(items []models.FavoriteMedicine) []FavoriteMedicineDTO {
+	dtos := make([]FavoriteMedicineDTO, len(items))
+	for i, item := range items {
+		dtos[i] = FavoriteMedicineDTO{
+			ID:   item.ID,
+			Name: item.Name,
+		}
+	}
+	return dtos
+}
+
+// MapFavoriteTests maps a slice of models.FavoriteTest into a slice of FavoriteTestDTO
+func MapFavoriteTests(items []models.FavoriteTest) []FavoriteTestDTO {
+	dtos := make([]FavoriteTestDTO, len(items))
+	for i, item := range items {
+		dtos[i] = FavoriteTestDTO{
+			ID:   item.ID,
+			Name: item.Name,
+		}
+	}
+	return dtos
+}
+
+// MapAdviceTemplates maps a slice of models.AdviceTemplate into a slice of AdviceTemplateDTO
+func MapAdviceTemplates(items []models.AdviceTemplate) []AdviceTemplateDTO {
+	dtos := make([]AdviceTemplateDTO, len(items))
+	for i, item := range items {
+		dtos[i] = AdviceTemplateDTO{
+			ID:      item.ID,
+			Title:   item.Title,
+			Content: item.Content,
+		}
+	}
+	return dtos
+}
+
+// MapFollowupTemplates maps a slice of models.FollowupTemplate into a slice of FollowupTemplateDTO
+func MapFollowupTemplates(items []models.FollowupTemplate) []FollowupTemplateDTO {
+	dtos := make([]FollowupTemplateDTO, len(items))
+	for i, item := range items {
+		dtos[i] = FollowupTemplateDTO{
+			ID:    item.ID,
+			Title: item.Title,
+			Value: item.Value,
+		}
 	}
 	return dtos
 }

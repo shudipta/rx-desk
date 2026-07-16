@@ -39,5 +39,11 @@ func SetupRouter() *gin.Engine {
 	r.POST("/prescriptions", handlers.CreatePrescription)
 	r.GET("/prescriptions/:id", handlers.GetPrescription)
 
+	// Template routes
+	r.GET("/favorite-medicines", handlers.ListFavoriteMedicines)
+	r.GET("/favorite-tests", handlers.ListFavoriteTests)
+	r.GET("/advice-templates", handlers.ListAdviceTemplates)
+	r.GET("/followup-templates", handlers.ListFollowupTemplates)
+
 	return r
 }
