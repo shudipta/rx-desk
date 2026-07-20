@@ -1,45 +1,188 @@
 # RxDesk
 
-RxDesk is a prescription acceleration system for a hospital OPD endocrinologist.
+RxDesk is a prescription management software for doctors.
 
-Goal:
-Reduce prescription creation time from 270 seconds to under 60 seconds.
+Initial target user:
 
-Current breakdown:
-- Diagnosis: 20 sec
-- Medicines: 130 sec
-- Tests: 50 sec
-- Advice: 50 sec
-- Follow-up: 20 sec
+* Endocrinologist OPD doctor
 
-Tech Stack:
-- Backend: Go, Gin, Gorm, SQLite
-- Frontend: Next.js, TypeScript, Tailwind, shadcn/ui
+Primary goal:
 
-MVP Features:
-- Patient Management
-- Prescription Management
-- Favorite Medicines
-- Favorite Tests
-- Advice Templates
-- Follow-up Templates
-- Clone Previous Prescription
-- Printable Prescription
+* Reduce prescription writing time
+* Fast patient lookup
+* Fast medicine selection
+* Fast advice selection
+* Fast test selection
 
-Out of Scope:
-- Authentication
-- AI
-- Billing
-- Inventory
-- Appointments
-- Multi Doctor
-- Hospital Management
+---
 
-Engineering Rules:
-- Keep code simple
-- No DDD
-- No CQRS
-- No Event Bus
-- No Microservices
-- REST APIs only
-- SQLite only
+# Tech Stack
+
+Backend:
+
+* Go
+* Gin
+* GORM
+* SQLite
+
+Frontend:
+
+* React
+* Vite
+* TypeScript
+* Ant Design
+* React Router
+
+---
+
+# Backend Status
+
+Completed.
+
+## Patient APIs
+
+GET /patients
+
+GET /patients/search
+
+GET /patients/:id
+
+POST /patients
+
+PUT /patients/:id
+
+---
+
+## Prescription APIs
+
+POST /prescriptions
+
+GET /prescriptions/:id
+
+GET /patients/:id/prescriptions
+
+---
+
+## Template APIs
+
+GET /favorite-medicines
+
+GET /favorite-tests
+
+GET /advice-templates
+
+GET /followup-templates
+
+---
+
+# Domain Model
+
+Patient
+
+└── Prescriptions
+
+```
+├── Diagnoses[]
+
+├── Advices[]
+
+├── Medicines[]
+
+├── Tests[]
+
+└── Followup
+```
+
+Diagnosis is stored in a separate table.
+
+Advice is stored in a separate table.
+
+One prescription may contain multiple diagnoses.
+
+One prescription may contain multiple advice items.
+
+---
+
+# Important Business Rules
+
+Multiple Diagnoses:
+
+* Supported
+
+Multiple Advices:
+
+* Supported
+
+Multiple Medicines:
+
+* Supported
+
+Multiple Tests:
+
+* Supported
+
+Followup:
+
+* Single value
+
+---
+
+# DTO Policy
+
+Never expose GORM models directly.
+
+Always use DTOs for API responses.
+
+Never expose:
+
+* CreatedAt
+* UpdatedAt
+* DeletedAt
+* Foreign key fields unless required
+
+---
+
+# Current Goal
+
+Build frontend.
+
+Do not redesign backend.
+
+Do not redesign database.
+
+Do not change API contracts.
+
+Use existing APIs.
+
+---
+
+# Frontend Pages
+
+1. Patient List
+
+2. Patient Details
+
+3. Prescription Create
+
+4. Prescription View
+
+---
+
+# Development Rules
+
+Always propose architecture before code.
+
+Always show API usage before implementation.
+
+Keep implementation simple.
+
+Avoid overengineering.
+
+Do not introduce:
+
+* Redux
+* Microservices
+* CQRS
+* Event sourcing
+
+Focus on fast delivery and doctor usability.
