@@ -2,26 +2,43 @@
 
 A prescription acceleration system for endocrinologists.
 
-Goal:
-Reduce prescription creation time from 4.5 minutes to under 1 minute.
+**Goal:** Reduce prescription creation time from 4.5 minutes to under 1 minute.
 
 ## Repository Structure
 
-- [backend/](file:///Users/rocketman/src/go/src/github.com/shudipta/rx-desk/backend) - Go, Gin, GORM, SQLite backend.
-- `frontend/` - Next.js client application (TBD).
-
-## Backend Setup & Running
-
-For detailed setup instructions, refer to the [backend README](file:///Users/rocketman/src/go/src/github.com/shudipta/rx-desk/backend/README.md).
-
-Quick run:
-```bash
-cd backend
-go run cmd/server/main.go
+```
+backend/   — Go, Gin, GORM, SQLite
+frontend/  — React 18, Vite 5, TypeScript 5, Ant Design 5
 ```
 
-Verify health:
+## Quick Start
+
+### Backend
+```bash
+cd backend
+go run ./cmd/server
+# Server starts on http://localhost:8080
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+# Dev server starts on http://localhost:5173
+```
+
+### Verify health
 ```bash
 curl http://localhost:8080/health
 ```
 
+## Build
+
+```bash
+cd frontend && npm run build
+```
+
+## Current Status
+
+See [PROJECT_STATUS.md](PROJECT_STATUS.md) for detailed project status.
