@@ -27,6 +27,9 @@ func SetupRouter() *gin.Engine {
 	// Register routes
 	r.GET("/health", handlers.HealthCheck)
 
+	// Dashboard stats
+	r.GET("/stats/dashboard", handlers.GetDashboardStats)
+
 	// Patient routes
 	r.GET("/patients", handlers.ListPatients)
 	r.GET("/patients/search", handlers.SearchPatients)
@@ -38,12 +41,32 @@ func SetupRouter() *gin.Engine {
 	// Prescription routes
 	r.POST("/prescriptions", handlers.CreatePrescription)
 	r.GET("/prescriptions/:id", handlers.GetPrescription)
+	r.PUT("/prescriptions/:id", handlers.UpdatePrescription)
+
+	// Doctor profile routes
+	r.GET("/doctor/profile", handlers.GetDoctorProfile)
+	r.PUT("/doctor/profile", handlers.UpdateDoctorProfile)
 
 	// Template routes
 	r.GET("/favorite-medicines", handlers.ListFavoriteMedicines)
+	r.POST("/favorite-medicines", handlers.CreateFavoriteMedicine)
+	r.PUT("/favorite-medicines/:id", handlers.UpdateFavoriteMedicine)
+	r.DELETE("/favorite-medicines/:id", handlers.DeleteFavoriteMedicine)
+
 	r.GET("/favorite-tests", handlers.ListFavoriteTests)
+	r.POST("/favorite-tests", handlers.CreateFavoriteTest)
+	r.PUT("/favorite-tests/:id", handlers.UpdateFavoriteTest)
+	r.DELETE("/favorite-tests/:id", handlers.DeleteFavoriteTest)
+
 	r.GET("/advice-templates", handlers.ListAdviceTemplates)
+	r.POST("/advice-templates", handlers.CreateAdviceTemplate)
+	r.PUT("/advice-templates/:id", handlers.UpdateAdviceTemplate)
+	r.DELETE("/advice-templates/:id", handlers.DeleteAdviceTemplate)
+
 	r.GET("/followup-templates", handlers.ListFollowupTemplates)
+	r.POST("/followup-templates", handlers.CreateFollowupTemplate)
+	r.PUT("/followup-templates/:id", handlers.UpdateFollowupTemplate)
+	r.DELETE("/followup-templates/:id", handlers.DeleteFollowupTemplate)
 
 	return r
 }

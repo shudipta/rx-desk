@@ -31,6 +31,7 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 		&models.FavoriteTest{},
 		&models.AdviceTemplate{},
 		&models.FollowupTemplate{},
+		&models.DoctorProfile{},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run database automigration: %w", err)

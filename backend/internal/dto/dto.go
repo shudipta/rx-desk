@@ -246,3 +246,35 @@ func MapFollowupTemplates(items []models.FollowupTemplate) []FollowupTemplateDTO
 	}
 	return dtos
 }
+
+type DoctorProfileDTO struct {
+	ID                 uint   `json:"id"`
+	DoctorName         string `json:"doctor_name"`
+	Qualification      string `json:"qualification"`
+	Specialization     string `json:"specialization"`
+	RegistrationNo     string `json:"registration_no"`
+	ClinicName         string `json:"clinic_name"`
+	HospitalName       string `json:"hospital_name"`
+	Address            string `json:"address"`
+	Phone              string `json:"phone"`
+	Email              string `json:"email"`
+	VisitingSchedule   string `json:"visiting_schedule"`
+	AppointmentContact string `json:"appointment_contact"`
+}
+
+func MapDoctorProfile(p models.DoctorProfile) DoctorProfileDTO {
+	return DoctorProfileDTO{
+		ID:                 p.ID,
+		DoctorName:         p.DoctorName,
+		Qualification:      p.Qualification,
+		Specialization:     p.Specialization,
+		RegistrationNo:     p.RegistrationNo,
+		ClinicName:         p.ClinicName,
+		HospitalName:       p.HospitalName,
+		Address:            p.Address,
+		Phone:              p.Phone,
+		Email:              p.Email,
+		VisitingSchedule:   p.VisitingSchedule,
+		AppointmentContact: p.AppointmentContact,
+	}
+}

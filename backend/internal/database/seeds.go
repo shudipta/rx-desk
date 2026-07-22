@@ -109,7 +109,61 @@ func Seed(db *gorm.DB) error {
 			}
 		}
 
-		// 4. Seed Followup Templates
+		// 4. Seed Doctor Profile (single row, id=1) — upsert: fills in any new fields
+		defaultProfile := models.DoctorProfile{
+			Model:              gorm.Model{ID: 1},
+			DoctorName:         "Dr. [Doctor's Name]",
+			Qualification:      "MD",
+			Specialization:     "Senior Endocrinologist & Diabetologist",
+			RegistrationNo:     "BMDC/2026/A-12345",
+			ClinicName:         "OPD Endocrinology Clinic",
+			HospitalName:       "RxDesk Hospital, OPD-1",
+			Address:            "",
+			Phone:              "+880-2-1234567",
+			Email:              "",
+			VisitingSchedule:   "Sat-Thu: 9AM - 5PM",
+			AppointmentContact: "+880-1XXX-XXXXXX",
+		}
+		var existingProfile models.DoctorProfile
+		if err := tx.First(&existingProfile).Error; err != nil {
+			if err := tx.Create(&defaultProfile).Error; err != nil {
+				return fmt.Errorf("failed to seed doctor profile: %w", err)
+			}
+		} else {
+			// Fill in any empty fields with seed defaults (preserves user edits)
+			updates := map[string]interface{}{}
+			if existingProfile.DoctorName == "" || existingProfile.DoctorName == "Dr. [Doctor's Name]" {
+				updates["doctor_name"] = defaultProfile.DoctorName
+			}
+			if existingProfile.Qualification == "" {
+				updates["qualification"] = defaultProfile.Qualification
+			}
+			if existingProfile.Specialization == "" {
+				updates["specialization"] = defaultProfile.Specialization
+			}
+			if existingProfile.RegistrationNo == "" {
+				updates["registration_no"] = defaultProfile.RegistrationNo
+			}
+			if existingProfile.HospitalName == "" {
+				updates["hospital_name"] = defaultProfile.HospitalName
+			}
+			if existingProfile.Phone == "" {
+				updates["phone"] = defaultProfile.Phone
+			}
+			if existingProfile.VisitingSchedule == "" {
+				updates["visiting_schedule"] = defaultProfile.VisitingSchedule
+			}
+			if existingProfile.AppointmentContact == "" {
+				updates["appointment_contact"] = defaultProfile.AppointmentContact
+			}
+			if len(updates) > 0 {
+				if err := tx.Model(&existingProfile).Updates(updates).Error; err != nil {
+					return fmt.Errorf("failed to update seed doctor profile: %w", err)
+				}
+			}
+		}
+
+		// 5. Seed Followup Templates
 		followupTemplates := []models.FollowupTemplate{
 			{Title: "2 Weeks", Value: "2 Weeks"},
 			{Title: "6 Weeks", Value: "6 Weeks"},

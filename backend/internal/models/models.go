@@ -85,3 +85,19 @@ type FollowupTemplate struct {
 	Title string `json:"title" gorm:"uniqueIndex;not null"`
 	Value string `json:"value" gorm:"not null"`
 }
+
+// DoctorProfile represents the doctor's personal and clinic information
+type DoctorProfile struct {
+	gorm.Model
+	DoctorName         string `json:"doctor_name" gorm:"not null"`
+	Qualification      string `json:"qualification"`
+	Specialization     string `json:"specialization"`
+	RegistrationNo     string `json:"registration_no"`
+	ClinicName         string `json:"clinic_name"`
+	HospitalName       string `json:"hospital_name" gorm:"not null"`
+	Address            string `json:"address"`
+	Phone              string `json:"phone"`
+	Email              string `json:"email"`
+	VisitingSchedule   string `json:"visiting_schedule"`
+	AppointmentContact string `json:"appointment_contact"`
+}
