@@ -68,8 +68,15 @@ func main() {
 		c.Data(200, "text/html; charset=utf-8", indexData)
 	})
 
-	log.Printf("Starting RxDesk server on port %s...", port)
-	if err := r.Run(":" + port); err != nil {
+	// Patient data has no login in front of it, so only this machine can reach
+	// the server unless HOST is set (e.g. HOST=0.0.0.0 to share on the network).
+	host := os.Getenv("HOST")
+	if host == "" {
+		host = "127.0.0.1"
+	}
+
+	log.Printf("Starting RxDesk server on http://%s:%s ...", host, port)
+	if err := r.Run(host + ":" + port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
