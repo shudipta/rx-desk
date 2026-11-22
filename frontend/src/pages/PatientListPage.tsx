@@ -4,6 +4,7 @@ import {
   Typography,
   Table,
   Input,
+  InputNumber,
   Alert,
   Button,
   Card,
@@ -16,6 +17,7 @@ import {
   Tag,
   Space,
   Empty,
+  Select,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import {
@@ -358,7 +360,7 @@ function PatientListPage() {
                 label={<span style={{ fontWeight: 600 }}>Age</span>}
                 rules={[{ required: true, message: 'Age is required' }]}
               >
-                <Input size="large" type="number" placeholder="Age" />
+                <InputNumber size="large" placeholder="Age" style={{ width: '100%' }} min={0} max={150} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -367,7 +369,11 @@ function PatientListPage() {
                 label={<span style={{ fontWeight: 600 }}>Gender</span>}
                 rules={[{ required: true, message: 'Gender is required' }]}
               >
-                <Input size="large" placeholder="Male / Female" />
+                <Select size="large" placeholder="Select gender">
+                  <Select.Option value="Male">Male</Select.Option>
+                  <Select.Option value="Female">Female</Select.Option>
+                  <Select.Option value="Other">Other</Select.Option>
+                </Select>
               </Form.Item>
             </Col>
           </Row>
@@ -420,7 +426,7 @@ function PatientListPage() {
                 label={<span style={{ fontWeight: 600 }}>Age</span>}
                 rules={[{ required: true, message: 'Age is required' }]}
               >
-                <Input size="large" type="number" placeholder="Age" />
+                <InputNumber size="large" placeholder="Age" style={{ width: '100%' }} min={0} max={150} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -429,7 +435,11 @@ function PatientListPage() {
                 label={<span style={{ fontWeight: 600 }}>Gender</span>}
                 rules={[{ required: true, message: 'Gender is required' }]}
               >
-                <Input size="large" placeholder="Male / Female" />
+                <Select size="large" placeholder="Select gender">
+                  <Select.Option value="Male">Male</Select.Option>
+                  <Select.Option value="Female">Female</Select.Option>
+                  <Select.Option value="Other">Other</Select.Option>
+                </Select>
               </Form.Item>
             </Col>
           </Row>
