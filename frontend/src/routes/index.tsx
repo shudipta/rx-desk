@@ -12,6 +12,7 @@ function AppRoutes() {
       <Route path="/patients/:id" element={<PatientDetailsPage />} />
       <Route path="/patients/:id/new-prescription" element={<PrescriptionCreatePage />} />
       <Route path="/prescriptions/:id" element={<PrescriptionViewPage />} />
+      <Route path="/prescriptions/:rxId/edit" element={<PrescriptionCreatePage />} />
       <Route path="/settings" element={<SettingsPage />} />
     </Routes>
   )

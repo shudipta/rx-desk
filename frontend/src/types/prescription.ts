@@ -37,6 +37,7 @@ export interface Prescription {
   visit_type: string
   followup: string
   notes: string
+  created_at: string
   patient?: Patient
   medicines: PrescriptionMedicine[]
   tests: PrescriptionTest[]

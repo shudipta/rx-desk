@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import {
   Typography,
   Card,
@@ -14,6 +14,8 @@ import {
   Col,
   Tag,
   Tooltip,
+  AutoComplete,
+  Modal,
 } from 'antd'
 import type { InputRef } from 'antd'
 import {
@@ -31,6 +33,7 @@ import {
   ThunderboltOutlined,
   CheckCircleOutlined,
   CheckOutlined,
+  PrinterOutlined,
 } from '@ant-design/icons'
 import { fetchPatient } from '../api/patients'
 import { fetchPatientPrescriptions, fetchPrescription } from '../api/prescriptions'
@@ -42,12 +45,11 @@ import {
 } from '../api/templates'
 import { createPrescription, updatePrescription } from '../api/prescriptions'
 import type { Patient } from '../types/patient'
-import type { PatientPrescription } from '../types/prescription'
+import type { PatientPrescription, Prescription } from '../types/prescription'
 import type { FavoriteMedicine, FavoriteTest, AdviceTemplate, FollowupTemplate } from '../types/template'
 import type { CreatePrescriptionPayload } from '../types/prescription'
 
 const DURATION_OPTIONS = [
-  { value: '', label: 'Duration...' },
   { value: '3 days', label: '3 days' },
   { value: '5 days', label: '5 days' },
   { value: '7 days', label: '7 days' },
@@ -63,7 +65,6 @@ const DURATION_OPTIONS = [
 ]
 
 const INSTRUCTION_OPTIONS = [
-  { value: '', label: 'Instructions...' },
   { value: 'After meals', label: 'After meals' },
   { value: 'Before meals', label: 'Before meals' },
   { value: 'With breakfast', label: 'With breakfast' },
@@ -74,6 +75,9 @@ const INSTRUCTION_OPTIONS = [
   { value: 'Empty stomach', label: 'Empty stomach' },
   { value: 'With water', label: 'With water' },
 ]
+
+const filterPreset = (input: string, option?: { value: string }) =>
+  (option?.value ?? '').toLowerCase().includes(input.toLowerCase())
 
 interface MedicineEntry {
   medicine_name: string
@@ -123,13 +127,13 @@ function DosageInput({ value, onChange }: { value: string; onChange: (v: string)
               type="button"
               onClick={() => onSlotChange(String(Math.max(0, n - 1)))}
               style={{
-                width: 18,
-                height: 20,
+                width: 24,
+                height: 26,
                 border: 'none',
                 background: '#f3f4f6',
                 borderRadius: '4px 0 0 4px',
                 cursor: 'pointer',
-                fontSize: 12,
+                fontSize: 15,
                 fontWeight: 600,
                 color: '#6b7280',
                 display: 'flex',
@@ -145,9 +149,9 @@ function DosageInput({ value, onChange }: { value: string; onChange: (v: string)
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 26,
-                height: 20,
-                fontSize: 12,
+                width: 28,
+                height: 26,
+                fontSize: 13,
                 fontWeight: 700,
                 color: '#1a1a2e',
                 background: '#fff',
@@ -161,13 +165,13 @@ function DosageInput({ value, onChange }: { value: string; onChange: (v: string)
               type="button"
               onClick={() => onSlotChange(String(n + 1))}
               style={{
-                width: 18,
-                height: 20,
+                width: 24,
+                height: 26,
                 border: 'none',
                 background: '#f3f4f6',
                 borderRadius: '0 4px 4px 0',
                 cursor: 'pointer',
-                fontSize: 12,
+                fontSize: 15,
                 fontWeight: 600,
                 color: '#6b7280',
                 display: 'flex',
@@ -196,7 +200,10 @@ function DosageInput({ value, onChange }: { value: string; onChange: (v: string)
 }
 
 function PrescriptionCreatePage() {
-  const { id } = useParams<{ id: string }>()
+  // /patients/:id/new-prescription (new) or /prescriptions/:rxId/edit (edit).
+  // Edit mode lives in the URL so a browser refresh cannot turn it into a new Rx.
+  const { id: patientParam, rxId } = useParams<{ id?: string; rxId?: string }>()
+  const editId = rxId ? Number(rxId) : undefined
   const navigate = useNavigate()
   const titleRef = useRef<InputRef>(null)
 
@@ -224,22 +231,30 @@ function PrescriptionCreatePage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const location = useLocation()
-  const editId = (location.state as { editPrescriptionId?: number } | null)?.editPrescriptionId
-
   useEffect(() => {
-    if (!id) return
-    setLoading(true)
-    setError(null)
-    Promise.all([
-      fetchPatient(Number(id)),
-      fetchFavoriteMedicines(),
-      fetchFavoriteTests(),
-      fetchAdviceTemplates(),
-      fetchFollowupTemplates(),
-      fetchPatientPrescriptions(Number(id)),
-    ])
-      .then(([patientData, favMeds, favTests, advTemplates, fuTemplates, prevRx]) => {
+    let cancelled = false
+    const load = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        let editRx: Prescription | null = null
+        let patientId = patientParam ? Number(patientParam) : 0
+        if (editId) {
+          editRx = await fetchPrescription(editId)
+          patientId = editRx.patient?.id ?? 0
+        }
+        if (!patientId) throw new Error('Patient not found')
+
+        const [patientData, favMeds, favTests, advTemplates, fuTemplates, prevRx] =
+          await Promise.all([
+            fetchPatient(patientId),
+            fetchFavoriteMedicines(),
+            fetchFavoriteTests(),
+            fetchAdviceTemplates(),
+            fetchFollowupTemplates(),
+            fetchPatientPrescriptions(patientId),
+          ])
+        if (cancelled) return
         setPatient(patientData)
         setFavoriteMedicines(favMeds)
         setFavoriteTests(favTests)
@@ -247,17 +262,22 @@ function PrescriptionCreatePage() {
         setFollowupTemplates(fuTemplates)
         setPreviousPrescriptions(prevRx)
 
-        if (editId) {
-          clonePrescription(editId)
+        if (editRx) {
+          applyPrescription(editRx)
         } else if (prevRx.length > 0) {
-          clonePrescription(prevRx[0].id)
+          await clonePrescription(prevRx[0].id, false)
         }
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Failed to load data')
-      })
-      .finally(() => setLoading(false))
-  }, [id])
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load data')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [patientParam, editId])
 
   useEffect(() => {
     if (!loading && patient) {
@@ -265,26 +285,32 @@ function PrescriptionCreatePage() {
     }
   }, [loading, patient])
 
-  const clonePrescription = async (prescriptionId: number) => {
+  // Replace every field, so switching between older prescriptions never
+  // leaves values from the previous one behind.
+  const applyPrescription = (rx: Prescription) => {
+    setTitle(rx.title ?? '')
+    setVisitType(rx.visit_type || 'OPD')
+    setFollowup(rx.followup ?? '')
+    setNotes(rx.notes ?? '')
+    setDiagnoses(rx.diagnoses?.length ? rx.diagnoses.map((d) => d.diagnosis_text) : [''])
+    setMedicines(
+      rx.medicines?.map((m) => ({
+        medicine_name: m.medicine_name,
+        dosage: m.dosage,
+        duration: m.duration,
+        instructions: m.instructions,
+      })) ?? [],
+    )
+    setTests(rx.tests?.map((t) => t.test_name) ?? [])
+    setAdvices(rx.advices?.length ? rx.advices.map((a) => a.advice_text) : [''])
+  }
+
+  const clonePrescription = async (prescriptionId: number, announce = true) => {
     setCloning(true)
     try {
       const rx = await fetchPrescription(prescriptionId)
-      setTitle(rx.title)
-      rx.visit_type && setVisitType(rx.visit_type)
-      rx.followup && setFollowup(rx.followup)
-      rx.notes && setNotes(rx.notes)
-      setDiagnoses(rx.diagnoses?.map((d) => d.diagnosis_text) ?? [''])
-      setMedicines(
-        rx.medicines?.map((m) => ({
-          medicine_name: m.medicine_name,
-          dosage: m.dosage,
-          duration: m.duration,
-          instructions: m.instructions,
-        })) ?? [],
-      )
-      setTests(rx.tests?.map((t) => t.test_name) ?? [])
-      setAdvices(rx.advices?.map((a) => a.advice_text) ?? [''])
-      message.success('Cloned from previous prescription')
+      applyPrescription(rx)
+      if (announce) message.success('Cloned from previous prescription')
     } catch (err) {
       message.error('Failed to load previous prescription')
     } finally {
@@ -373,23 +399,83 @@ function PrescriptionCreatePage() {
   const removeAdvice = (index: number) =>
     setAdvices((prev) => prev.filter((_, i) => i !== index))
 
-  const handleSubmit = async () => {
-    if (!title.trim()) {
-      setSubmitError('Title is required')
+  // Quick Reference tags toggle: a second click removes the item.
+  const toggleMedicine = (name: string) =>
+    isMedicineSelected(name)
+      ? setMedicines((prev) => prev.filter((m) => m.medicine_name !== name))
+      : addMedicine(name)
+
+  const toggleTest = (name: string) =>
+    isTestSelected(name) ? setTests((prev) => prev.filter((t) => t !== name)) : addTest(name)
+
+  const toggleAdvice = (content: string) => {
+    if (!isAdviceSelected(content)) return addAdvice(content)
+    setAdvices((prev) => {
+      const next = prev.filter((a) => a !== content)
+      return next.length ? next : ['']
+    })
+  }
+
+  const toggleFollowup = (value: string) => setFollowup((prev) => (prev === value ? '' : value))
+
+  // Unsaved-changes tracking: compare the form with what was loaded.
+  const formSnapshot = useMemo(
+    () => JSON.stringify({ title, visitType, followup, notes, diagnoses, medicines, tests, advices }),
+    [title, visitType, followup, notes, diagnoses, medicines, tests, advices],
+  )
+  const baselineRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!loading && !cloning) baselineRef.current = formSnapshot
+    // Only re-baseline when a load or clone finishes, not on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, cloning])
+  const isDirty = baselineRef.current !== null && baselineRef.current !== formSnapshot
+  const savedRef = useRef(false)
+
+  useEffect(() => {
+    if (!isDirty) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (savedRef.current) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [isDirty])
+
+  const leave = (path: string) => {
+    if (!isDirty) return navigate(path)
+    Modal.confirm({
+      title: 'Discard this prescription?',
+      content: 'Your changes have not been saved.',
+      okText: 'Discard',
+      okButtonProps: { danger: true },
+      cancelText: 'Keep editing',
+      onOk: () => navigate(path),
+    })
+  }
+
+  const handleSubmit = async (print = false) => {
+    if (!patient || submitting) return
+    const hasContent =
+      diagnoses.some((d) => d.trim()) ||
+      medicines.some((m) => m.medicine_name.trim()) ||
+      tests.some((t) => t.trim()) ||
+      advices.some((a) => a.trim())
+    if (!hasContent) {
+      setSubmitError('Add at least one diagnosis, medicine, test or advice')
       return
     }
-    if (medicines.length === 0) {
-      setSubmitError('At least one medicine is required')
-      return
-    }
+    // Title is optional: fall back to the first diagnosis, then the visit type.
+    const finalTitle = title.trim() || diagnoses.find((d) => d.trim())?.trim() || visitType
 
     setSubmitting(true)
     setSubmitError(null)
 
     try {
       const payload: CreatePrescriptionPayload = {
-        patient_id: Number(id),
-        title: title.trim(),
+        patient_id: patient.id,
+        title: finalTitle,
         visit_type: visitType,
         followup,
         notes,
@@ -416,7 +502,8 @@ function PrescriptionCreatePage() {
         ? await updatePrescription(editId, payload)
         : await createPrescription(payload)
       message.success(editId ? 'Prescription updated' : 'Prescription created')
-      navigate(`/prescriptions/${result.id}`)
+      savedRef.current = true
+      navigate(`/prescriptions/${result.id}${print ? '?print=1' : ''}`)
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : `Failed to ${editId ? 'update' : 'create'} prescription`
       setSubmitError(errorMsg)
@@ -425,6 +512,20 @@ function PrescriptionCreatePage() {
       setSubmitting(false)
     }
   }
+
+  // Ctrl/Cmd+Enter saves, adding Shift saves and prints.
+  const submitRef = useRef(handleSubmit)
+  submitRef.current = handleSubmit
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        submitRef.current(e.shiftKey)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   if (loading) {
     return (
@@ -454,7 +555,7 @@ function PrescriptionCreatePage() {
       <Button
         type="text"
         icon={<ArrowLeftOutlined />}
-        onClick={() => navigate(`/patients/${id}`)}
+        onClick={() => leave(`/patients/${patient.id}`)}
         style={{
           marginBottom: 16,
           color: '#6b7280',
@@ -504,7 +605,7 @@ function PrescriptionCreatePage() {
                 </Space>
               </Col>
               <Col>
-                {previousPrescriptions.length > 0 && (
+                {!editId && previousPrescriptions.length > 0 && (
                   <Tooltip title="Cloned from latest prescription">
                     <Tag
                       icon={<CopyOutlined />}
@@ -530,7 +631,7 @@ function PrescriptionCreatePage() {
             />
           )}
 
-          {!cloning && previousPrescriptions.length > 1 && (
+          {!editId && !cloning && previousPrescriptions.length > 1 && (
             <Card
               size="small"
               style={{
@@ -556,7 +657,7 @@ function PrescriptionCreatePage() {
                     placeholder="Older prescription..."
                     style={{ width: '100%' }}
                     loading={cloning}
-                    onChange={clonePrescription}
+                    onChange={(rxId: number) => clonePrescription(rxId)}
                     options={previousPrescriptions.slice(1).map((rx) => ({
                       value: rx.id,
                       label: `${rx.title} (${new Date(rx.created_at).toLocaleDateString()})`,
@@ -583,7 +684,7 @@ function PrescriptionCreatePage() {
                   ref={titleRef}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Title (e.g., Monthly follow-up)"
+                  placeholder="Title (optional — uses diagnosis)"
                   size="middle"
                 />
               </Col>
@@ -643,7 +744,7 @@ function PrescriptionCreatePage() {
                             margin: 0,
                             fontSize: 11,
                           }}
-                          onClick={() => setFollowup(f.value)}
+                          onClick={() => toggleFollowup(f.value)}
                         >
                           {selected ? <CheckOutlined /> : <PlusOutlined />}{' '}
                           {f.value}
@@ -751,29 +852,25 @@ function PrescriptionCreatePage() {
                         />
                       </td>
                       <td style={{ padding: '3px 4px' }}>
-                        <Select
+                        <AutoComplete
                           value={m.duration}
-                          onChange={(v) => handleMedicineChange(i, 'duration', v)}
+                          onChange={(v) => handleMedicineChange(i, 'duration', v ?? '')}
                           size="small"
                           style={{ width: '100%' }}
                           options={DURATION_OPTIONS}
-                          showSearch
-                          filterOption={(input, option) =>
-                            (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
-                          }
+                          filterOption={filterPreset}
+                          placeholder="Duration"
                         />
                       </td>
                       <td style={{ padding: '3px 4px' }}>
-                        <Select
+                        <AutoComplete
                           value={m.instructions}
-                          onChange={(v) => handleMedicineChange(i, 'instructions', v)}
+                          onChange={(v) => handleMedicineChange(i, 'instructions', v ?? '')}
                           size="small"
                           style={{ width: '100%' }}
                           options={INSTRUCTION_OPTIONS}
-                          showSearch
-                          filterOption={(input, option) =>
-                            (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
-                          }
+                          filterOption={filterPreset}
+                          placeholder="Instructions"
                         />
                       </td>
                       <td style={{ padding: '3px 4px', textAlign: 'center' }}>
@@ -792,7 +889,7 @@ function PrescriptionCreatePage() {
             </div>
             {medicines.length === 0 && (
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Click a quick-add tag above or "Add" to enter a medicine
+                Click a Quick Reference tag or "Add" to enter a medicine
               </Typography.Text>
             )}
           </Card>
@@ -841,7 +938,7 @@ function PrescriptionCreatePage() {
             ))}
             {tests.length === 0 && (
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Click a quick-add tag above or "Add" to enter a test
+                Click a Quick Reference tag or "Add" to enter a test
               </Typography.Text>
             )}
           </Card>
@@ -890,7 +987,7 @@ function PrescriptionCreatePage() {
             ))}
             {advices.length === 0 && (
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Click a quick-add tag above or "Add" to enter advice
+                Click a Quick Reference tag or "Add" to enter advice
               </Typography.Text>
             )}
           </Card>
@@ -915,22 +1012,35 @@ function PrescriptionCreatePage() {
             }}
           >
             <Button
-              onClick={() => navigate(`/patients/${id}`)}
+              onClick={() => leave(`/patients/${patient.id}`)}
               size="large"
               style={{ borderRadius: 10 }}
             >
               Cancel
             </Button>
-            <Button
-              type="primary"
-              onClick={handleSubmit}
-              loading={submitting}
-              size="large"
-              icon={<CheckCircleOutlined />}
-              style={{ borderRadius: 10, paddingLeft: 24, paddingRight: 24 }}
-            >
-              {editId ? 'Update Prescription' : 'Create Prescription'}
-            </Button>
+            <Tooltip title="Ctrl+Enter">
+              <Button
+                onClick={() => handleSubmit(false)}
+                loading={submitting}
+                size="large"
+                icon={<CheckCircleOutlined />}
+                style={{ borderRadius: 10 }}
+              >
+                {editId ? 'Update' : 'Save'}
+              </Button>
+            </Tooltip>
+            <Tooltip title="Ctrl+Shift+Enter">
+              <Button
+                type="primary"
+                onClick={() => handleSubmit(true)}
+                loading={submitting}
+                size="large"
+                icon={<PrinterOutlined />}
+                style={{ borderRadius: 10, paddingLeft: 24, paddingRight: 24 }}
+              >
+                {editId ? 'Update & Print' : 'Save & Print'}
+              </Button>
+            </Tooltip>
           </div>
         </Col>
 
@@ -977,7 +1087,7 @@ function PrescriptionCreatePage() {
                           fontSize: 11,
                           opacity: selected ? 1 : 0.8,
                         }}
-                        onClick={() => addMedicine(m.name)}
+                        onClick={() => toggleMedicine(m.name)}
                       >
                         {selected ? <CheckOutlined /> : <PlusOutlined />} {m.name}
                       </Tag>
@@ -1014,7 +1124,7 @@ function PrescriptionCreatePage() {
                           fontSize: 11,
                           opacity: selected ? 1 : 0.8,
                         }}
-                        onClick={() => addTest(t.name)}
+                        onClick={() => toggleTest(t.name)}
                       >
                         {selected ? <CheckOutlined /> : <PlusOutlined />} {t.name}
                       </Tag>
@@ -1051,7 +1161,7 @@ function PrescriptionCreatePage() {
                           fontSize: 11,
                           opacity: selected ? 1 : 0.8,
                         }}
-                        onClick={() => addAdvice(a.content)}
+                        onClick={() => toggleAdvice(a.content)}
                       >
                         {selected ? <CheckOutlined /> : <PlusOutlined />} {a.title}
                       </Tag>
@@ -1088,7 +1198,7 @@ function PrescriptionCreatePage() {
                           fontSize: 11,
                           opacity: selected ? 1 : 0.8,
                         }}
-                        onClick={() => setFollowup(f.value)}
+                        onClick={() => toggleFollowup(f.value)}
                       >
                         {selected ? <CheckOutlined /> : <PlusOutlined />} {f.value}
                       </Tag>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button, Spin, Result } from 'antd'
 import { ArrowLeftOutlined, FileTextOutlined, PrinterOutlined } from '@ant-design/icons'
 import { fetchPrescription } from '../api/prescriptions'
@@ -194,6 +194,8 @@ const styles = {
 function PrescriptionViewPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const autoPrint = searchParams.get('print') === '1'
   const [prescription, setPrescription] = useState<Prescription | null>(null)
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -216,6 +218,15 @@ function PrescriptionViewPage() {
       })
       .finally(() => setLoading(false))
   }, [id])
+
+  // "Save & Print" lands here with ?print=1: open the print dialog once, then
+  // drop the flag so a refresh does not print again.
+  useEffect(() => {
+    if (loading || !prescription || !autoPrint) return
+    setSearchParams({}, { replace: true })
+    const t = setTimeout(() => window.print(), 300)
+    return () => clearTimeout(t)
+  }, [loading, prescription, autoPrint, setSearchParams])
 
   if (loading) {
     return (
@@ -241,7 +252,7 @@ function PrescriptionViewPage() {
   const patientPath = prescription.patient
     ? `/patients/${prescription.patient.id}`
     : '/'
-  const today = new Date().toLocaleDateString('en-GB', {
+  const visitDate = new Date(prescription.created_at || Date.now()).toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -275,11 +286,7 @@ function PrescriptionViewPage() {
           <Button
             type="primary"
             icon={<FileTextOutlined />}
-            onClick={() =>
-              navigate(`/patients/${prescription.patient!.id}/new-prescription`, {
-                state: { editPrescriptionId: prescription.id },
-              })
-            }
+            onClick={() => navigate(`/prescriptions/${prescription.id}/edit`)}
           >
             Edit
           </Button>
@@ -329,7 +336,7 @@ function PrescriptionViewPage() {
               <div>{age}</div>
               <div>{gender}</div>
               <div>{p?.phone ?? '—'}</div>
-              <div>{today}</div>
+              <div>{visitDate}</div>
             </div>
           </div>
 
