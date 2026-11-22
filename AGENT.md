@@ -185,15 +185,35 @@ Focus on fast delivery and doctor usability.
 
 # Build & Run
 
-## Backend
+## Development
+
+### Backend
 ```bash
 cd backend && go run ./cmd/server
 ```
 
-## Frontend
+### Frontend (dev server with API proxy)
 ```bash
 cd frontend && npm run dev
 ```
+
+## Production (single binary)
+
+Build everything into one binary:
+```bash
+make build
+# Output: backend/rx-desk (34MB standalone binary)
+
+# Run it:
+cd backend && ./rx-desk
+# Opens on http://localhost:8080
+```
+
+The binary embeds the built frontend. API routes take priority over SPA routes.
+- `/` → SPA
+- `/patients`, `/prescriptions/:id`, etc. → API (refresh on these shows JSON)
+- `/patients/:id/new-prescription`, `/settings`, etc. → SPA
+- `/assets/*` → static files
 
 ## Verify Build
 ```bash
