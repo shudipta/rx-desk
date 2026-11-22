@@ -1,0 +1,9 @@
+# Patient data must never be committed
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Build output
+backend/rx-desk
+node_modules/
