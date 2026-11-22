@@ -1,0 +1,2 @@
+id,created_at,updated_at,deleted_at,doctor_name,qualification,specialization,registration_no,clinic_name,hospital_name,address,phone,email,visiting_schedule,appointment_contact
+1,2026-07-22T15:08:47.232233+06:00,2026-07-22T15:08:47.232233+06:00,,Dr. [Doctor's Name],MD,Senior Endocrinologist & Diabetologist,BMDC/2026/A-12345,OPD Endocrinology Clinic,"RxDesk Hospital, OPD-1",,+880-2-1234567,,Sat-Thu: 9AM - 5PM,+880-1XXX-XXXXXX
