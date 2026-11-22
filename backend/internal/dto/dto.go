@@ -20,6 +20,7 @@ type PrescriptionDTO struct {
 	VisitType string                     `json:"visit_type"`
 	Followup  string                     `json:"followup"`
 	Notes     string                     `json:"notes"`
+	CreatedAt time.Time                  `json:"created_at"`
 	Patient   *PatientDTO                `json:"patient,omitempty"`
 	Medicines []PrescriptionMedicineDTO   `json:"medicines,omitempty"`
 	Tests     []PrescriptionTestDTO       `json:"tests,omitempty"`
@@ -168,6 +169,7 @@ func MapPrescription(p models.Prescription) PrescriptionDTO {
 		Title:     p.Title,
 		VisitType: p.VisitType,
 		Followup:  p.Followup,
+		CreatedAt: p.CreatedAt,
 		Notes:     p.Notes,
 		Patient:   patientDTO,
 		Medicines: medicineDTOs,

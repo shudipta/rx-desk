@@ -159,11 +159,12 @@ func UpdatePrescription(c *gin.Context) {
 
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		// Update root fields
-		if err := tx.Model(&prescription).Updates(models.Prescription{
-			Title:     input.Title,
-			VisitType: input.VisitType,
-			Followup:  input.Followup,
-			Notes:     input.Notes,
+		// A map (not a struct) so that cleared follow-up/notes are saved as empty
+		if err := tx.Model(&prescription).Updates(map[string]interface{}{
+			"title":      input.Title,
+			"visit_type": input.VisitType,
+			"followup":   input.Followup,
+			"notes":      input.Notes,
 		}).Error; err != nil {
 			return err
 		}

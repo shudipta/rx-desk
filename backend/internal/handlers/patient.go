@@ -18,10 +18,10 @@ type PatientInput struct {
 	Phone  string `json:"phone" binding:"required"`
 }
 
-// ListPatients retrieves all patients
+// ListPatients retrieves all patients, newest first
 func ListPatients(c *gin.Context) {
 	var patients []models.Patient
-	if err := database.DB.Find(&patients).Error; err != nil {
+	if err := database.DB.Order("id DESC").Find(&patients).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch patients"})
 		return
 	}
@@ -51,7 +51,7 @@ func SearchPatients(c *gin.Context) {
 
 	var patients []models.Patient
 	// SQLite LIKE is case-insensitive for ASCII by default, but LOWER() ensures correctness
-	err := database.DB.Where("LOWER(name) LIKE ? OR LOWER(phone) LIKE ?", lowerQuery, lowerQuery).Find(&patients).Error
+	err := database.DB.Where("LOWER(name) LIKE ? OR LOWER(phone) LIKE ?", lowerQuery, lowerQuery).Order("id DESC").Find(&patients).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search patients"})
 		return
@@ -80,7 +80,7 @@ func CreatePatient(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, patient)
+	c.JSON(http.StatusCreated, dto.MapPatient(patient))
 }
 
 // UpdatePatient updates an existing patient record
@@ -108,5 +108,5 @@ func UpdatePatient(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, patient)
+	c.JSON(http.StatusOK, dto.MapPatient(patient))
 }
