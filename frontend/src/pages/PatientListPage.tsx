@@ -27,6 +27,7 @@ import {
   SearchOutlined,
   ReloadOutlined,
   UserAddOutlined,
+  FileAddOutlined,
 } from '@ant-design/icons'
 import { fetchPatients, searchPatients, fetchDashboardStats, updatePatient, createPatient } from '../api/patients'
 import type { DashboardStats } from '../api/patients'
@@ -99,16 +100,30 @@ function PatientListPage() {
     setCreating(true)
     try {
       const values = await createForm.validateFields()
-      await createPatient(values)
+      const created = await createPatient(values)
       message.success('Patient added')
       setCreateModalOpen(false)
       createForm.resetFields()
-      loadPatients(searchQuery)
-      fetchDashboardStats().then(setStats).catch(() => {})
+      // A new patient is almost always here to be seen now: go straight to the Rx.
+      navigate(`/patients/${created.id}/new-prescription`)
     } catch (err) {
       if (err instanceof Error && err.message) message.error(err.message)
     } finally {
       setCreating(false)
+    }
+  }
+
+  // Enter in the search box opens the top match (searches fresh, so a fast
+  // typist does not land on a stale result from the debounce).
+  const openTopMatch = async () => {
+    const q = searchQuery.trim()
+    if (!q) return
+    try {
+      const results = await searchPatients(q)
+      if (results.length > 0) navigate(`/patients/${results[0].id}`)
+      else message.info('No patient matches — press "Add Patient" to register')
+    } catch (err) {
+      if (err instanceof Error) message.error(err.message)
     }
   }
 
@@ -170,17 +185,31 @@ function PatientListPage() {
     {
       title: '',
       key: 'actions',
-      width: 60,
+      width: 130,
       render: (_, record) => (
-        <Button
-          type="text"
-          icon={<EditOutlined />}
-          onClick={(e) => {
-            e.stopPropagation()
-            openEditModal(record)
-          }}
-          style={{ color: '#9ca3af' }}
-        />
+        <Space size={4}>
+          <Button
+            type="primary"
+            ghost
+            size="small"
+            icon={<FileAddOutlined />}
+            onClick={(e) => {
+              e.stopPropagation()
+              navigate(`/patients/${record.id}/new-prescription`)
+            }}
+          >
+            Rx
+          </Button>
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            onClick={(e) => {
+              e.stopPropagation()
+              openEditModal(record)
+            }}
+            style={{ color: '#9ca3af' }}
+          />
+        </Space>
       ),
     },
   ]
@@ -255,6 +284,8 @@ function PatientListPage() {
                 placeholder="Search by name or phone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onPressEnter={openTopMatch}
+                autoFocus
                 prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
                 allowClear
                 style={{ width: 260, borderRadius: 10 }}
