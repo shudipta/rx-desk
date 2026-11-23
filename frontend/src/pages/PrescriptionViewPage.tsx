@@ -67,54 +67,12 @@ const styles = {
     textAlign: 'right' as const,
     fontFamily: bnFont,
   },
-  doctorNameBn: {
-    fontSize: 19,
-    fontWeight: 700,
-    color: teal,
-  },
-  bnLine: {
-    fontSize: 12.5,
-    color: '#444',
-    marginTop: 1,
-    whiteSpace: 'pre-line' as const,
-  },
-  bnStrong: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: '#1a1a2e',
-    marginTop: 4,
-  },
   hospitalBlock: {
     marginTop: 8,
-  },
-  hospital: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: '#1a1a2e',
   },
   clinicName: {
     fontSize: 12,
     color: '#444',
-    marginTop: 2,
-  },
-  address: {
-    fontSize: 12,
-    color: '#444',
-    marginTop: 2,
-  },
-  phone: {
-    fontSize: 12,
-    color: '#555',
-    marginTop: 2,
-  },
-  schedule: {
-    fontSize: 12,
-    color: '#555',
-    marginTop: 8,
-  },
-  appointment: {
-    fontSize: 12,
-    color: '#555',
     marginTop: 2,
   },
   bodySection: {
@@ -209,6 +167,12 @@ const styles = {
     alignItems: 'end' as const,
     fontSize: 12,
   },
+  footerBn: {
+    fontFamily: bnFont,
+    fontSize: 12.5,
+    color: '#333',
+    marginTop: 6,
+  },
   signatureBlock: {
     textAlign: 'right' as const,
   },
@@ -295,8 +259,7 @@ function PrescriptionViewPage() {
   const dp = doctorProfile
   const hasBangla = !!(
     dp &&
-    (dp.doctor_name_bn || dp.qualification_bn || dp.specialization_bn || dp.hospital_name_bn ||
-      dp.clinic_name_bn || dp.address_bn || dp.visiting_schedule_bn || dp.appointment_contact_bn)
+    (dp.doctor_name_bn || dp.qualification_bn || dp.specialization_bn || dp.registration_no_bn)
   )
   const listSection = (title: string, sub: string, items?: string[]) =>
     items && items.length > 0 ? (
@@ -364,28 +327,21 @@ function PrescriptionViewPage() {
               {dp?.qualification && <div style={styles.qualification}>{dp.qualification}</div>}
               <div style={styles.specialization}>{dp?.specialization || 'Senior Endocrinologist & Diabetologist'}</div>
               {dp?.registration_no && <div style={styles.regNo}>Reg No: {dp.registration_no}</div>}
-              <div style={styles.hospitalBlock}>
-                <div style={styles.hospital}>{dp?.hospital_name || 'RxDesk Hospital, OPD-1'}</div>
-                {dp?.clinic_name && <div style={styles.clinicName}>{dp.clinic_name}</div>}
-                {dp?.address && <div style={styles.address}>{dp.address}</div>}
-                {dp?.phone && <div style={styles.phone}>Phone: {dp.phone}</div>}
-                {dp?.visiting_schedule && <div style={styles.schedule}>Visiting: {dp.visiting_schedule}</div>}
-                {dp?.appointment_contact && <div style={styles.appointment}>Appointment: {dp.appointment_contact}</div>}
-              </div>
+              {dp?.clinic_name && <div style={{ ...styles.clinicName, ...styles.hospitalBlock }}>{dp.clinic_name}</div>}
             </div>
 
             {/* Right: Bangla */}
             <div style={styles.rightHeader} lang="bn">
-              {dp?.doctor_name_bn && <div style={styles.doctorNameBn}>{dp.doctor_name_bn}</div>}
-              {dp?.qualification_bn && <div style={styles.bnLine}>{dp.qualification_bn}</div>}
-              {dp?.specialization_bn && <div style={styles.bnStrong}>{dp.specialization_bn}</div>}
-              <div style={styles.hospitalBlock}>
-                {dp?.hospital_name_bn && <div style={styles.bnStrong}>{dp.hospital_name_bn}</div>}
-                {dp?.clinic_name_bn && <div style={styles.bnLine}>{dp.clinic_name_bn}</div>}
-                {dp?.address_bn && <div style={styles.bnLine}>{dp.address_bn}</div>}
-                {dp?.visiting_schedule_bn && <div style={styles.bnLine}>সাক্ষাতের সময়: {dp.visiting_schedule_bn}</div>}
-                {dp?.appointment_contact_bn && <div style={styles.bnLine}>সিরিয়ালের জন্য: {dp.appointment_contact_bn}</div>}
-              </div>
+              {/* Same lines and styles as the English column, line for line */}
+              {dp?.doctor_name_bn && <div style={styles.doctorName}>{dp.doctor_name_bn}</div>}
+              {dp?.qualification_bn && <div style={styles.qualification}>{dp.qualification_bn}</div>}
+              {dp?.specialization_bn && <div style={styles.specialization}>{dp.specialization_bn}</div>}
+              {(dp?.registration_no_bn || dp?.registration_no) && (
+                <div style={styles.regNo}>রেজি নং: {dp.registration_no_bn || dp.registration_no}</div>
+              )}
+              {dp?.clinic_name && dp?.clinic_name_bn && (
+                <div style={{ ...styles.clinicName, ...styles.hospitalBlock }}>{dp.clinic_name_bn}</div>
+              )}
               {!hasBangla && (
                 <div className="no-print" style={{ fontFamily: 'inherit', fontSize: 12, color: '#9ca3af' }}>
                   Add the Bangla header in Settings → Doctor Profile
@@ -476,6 +432,12 @@ function PrescriptionViewPage() {
           <div>
             <span style={{ fontWeight: 600, color: teal }}>Follow-up Interval: </span>
             {prescription.followup || 'Not specified'}
+            {(dp?.visiting_schedule_bn || dp?.appointment_contact_bn) && (
+              <div lang="bn" style={styles.footerBn}>
+                {dp?.visiting_schedule_bn && <div>সাক্ষাতের সময়: {dp.visiting_schedule_bn}</div>}
+                {dp?.appointment_contact_bn && <div>সিরিয়ালের জন্য: {dp.appointment_contact_bn}</div>}
+              </div>
+            )}
           </div>
           <div style={styles.signatureBlock}>
             <div>Authorized Signature &amp; Seal</div>

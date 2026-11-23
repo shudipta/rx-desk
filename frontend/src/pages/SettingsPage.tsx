@@ -320,6 +320,9 @@ function SettingsPage() {
           <Form.Item label="পদবি / বিশেষজ্ঞতা (Specialization)" name="specialization_bn">
             <Input style={bnInput} placeholder="যেমন: হরমোন ও ডায়াবেটিস রোগ বিশেষজ্ঞ" />
           </Form.Item>
+          <Form.Item label="রেজি নং (Registration no)" name="registration_no_bn">
+            <Input style={bnInput} placeholder="যেমন: বিএমডিসি এ-১২৩৪৫" />
+          </Form.Item>
           <Form.Item label="হাসপাতাল (Hospital)" name="hospital_name_bn">
             <Input style={bnInput} />
           </Form.Item>

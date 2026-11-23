@@ -334,6 +334,7 @@ type DoctorProfileDTO struct {
 	DoctorNameBn         string `json:"doctor_name_bn"`
 	QualificationBn      string `json:"qualification_bn"`
 	SpecializationBn     string `json:"specialization_bn"`
+	RegistrationNoBn     string `json:"registration_no_bn"`
 	ClinicNameBn         string `json:"clinic_name_bn"`
 	HospitalNameBn       string `json:"hospital_name_bn"`
 	AddressBn            string `json:"address_bn"`
@@ -359,6 +360,7 @@ func MapDoctorProfile(p models.DoctorProfile) DoctorProfileDTO {
 		DoctorNameBn:         p.DoctorNameBn,
 		QualificationBn:      p.QualificationBn,
 		SpecializationBn:     p.SpecializationBn,
+		RegistrationNoBn:     p.RegistrationNoBn,
 		ClinicNameBn:         p.ClinicNameBn,
 		HospitalNameBn:       p.HospitalNameBn,
 		AddressBn:            p.AddressBn,

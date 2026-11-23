@@ -15,6 +15,7 @@ export interface DoctorProfile {
   doctor_name_bn: string
   qualification_bn: string
   specialization_bn: string
+  registration_no_bn: string
   clinic_name_bn: string
   hospital_name_bn: string
   address_bn: string
