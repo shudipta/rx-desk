@@ -1,14 +1,25 @@
 import { useState, useEffect } from 'react'
 import { Card, Form, Input, Button, Spin, Result, message, Modal, Space, Typography, Divider } from 'antd'
-import { SaveOutlined, PlusOutlined, EditOutlined, DeleteOutlined, MedicineBoxOutlined, ExperimentOutlined, MessageOutlined, CalendarOutlined } from '@ant-design/icons'
+import {
+  SaveOutlined, PlusOutlined, EditOutlined, DeleteOutlined, MedicineBoxOutlined, ExperimentOutlined, MessageOutlined,
+  CalendarOutlined, CommentOutlined, HistoryOutlined, DashboardOutlined, FileTextOutlined,
+} from '@ant-design/icons'
 import { getDoctorProfile, updateDoctorProfile } from '../api/doctor'
 import {
   fetchFavoriteMedicines, createFavoriteMedicine, updateFavoriteMedicine, deleteFavoriteMedicine,
   fetchFavoriteTests, createFavoriteTest, updateFavoriteTest, deleteFavoriteTest,
   fetchAdviceTemplates, createAdviceTemplate, updateAdviceTemplate, deleteAdviceTemplate,
   fetchFollowupTemplates, createFollowupTemplate, updateFollowupTemplate, deleteFollowupTemplate,
+  fetchClinicalTemplates, createClinicalTemplate, updateClinicalTemplate, deleteClinicalTemplate,
 } from '../api/templates'
-import type { FavoriteMedicine, FavoriteTest, AdviceTemplate, FollowupTemplate } from '../types/template'
+import type {
+  FavoriteMedicine, FavoriteTest, AdviceTemplate, FollowupTemplate, ClinicalTemplate, ClinicalSection,
+} from '../types/template'
+
+type TemplateType = 'medicine' | 'test' | 'advice' | 'followup' | ClinicalSection
+const CLINICAL_SECTIONS: ClinicalSection[] = ['cc', 'ph', 'oe', 'dx']
+const isClinical = (t: TemplateType): t is ClinicalSection => (CLINICAL_SECTIONS as string[]).includes(t)
+const bnInput = { fontFamily: "'Noto Sans Bengali', 'Kohinoor Bangla', 'Nirmala UI', 'Vrinda', sans-serif" }
 
 function SettingsPage() {
   const [form] = Form.useForm()
@@ -21,10 +32,11 @@ function SettingsPage() {
   const [tests, setTests] = useState<FavoriteTest[]>([])
   const [advices, setAdvices] = useState<AdviceTemplate[]>([])
   const [followups, setFollowups] = useState<FollowupTemplate[]>([])
+  const [clinical, setClinical] = useState<ClinicalTemplate[]>([])
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false)
-  const [modalType, setModalType] = useState<'medicine' | 'test' | 'advice' | 'followup'>('medicine')
+  const [modalType, setModalType] = useState<TemplateType>('medicine')
   const [editingId, setEditingId] = useState<number | null>(null)
   const [modalLoading, setModalLoading] = useState(false)
 
@@ -41,6 +53,7 @@ function SettingsPage() {
       fetchFavoriteTests().then(setTests),
       fetchAdviceTemplates().then(setAdvices),
       fetchFollowupTemplates().then(setFollowups),
+      fetchClinicalTemplates().then(setClinical),
     ]).catch((err) => setError(err instanceof Error ? err.message : 'Failed to load'))
       .finally(() => setLoading(false))
   }, [form])
@@ -58,7 +71,7 @@ function SettingsPage() {
     }
   }
 
-  const openAdd = (type: typeof modalType) => {
+  const openAdd = (type: TemplateType) => {
     setModalType(type)
     setEditingId(null)
     setField1('')
@@ -66,7 +79,7 @@ function SettingsPage() {
     setModalOpen(true)
   }
 
-  const openEdit = (type: typeof modalType, id: number, v1: string, v2: string) => {
+  const openEdit = (type: TemplateType, id: number, v1: string, v2: string) => {
     setModalType(type)
     setEditingId(id)
     setField1(v1)
@@ -85,7 +98,15 @@ function SettingsPage() {
     }
     setModalLoading(true)
     try {
-      if (modalType === 'medicine') {
+      if (isClinical(modalType)) {
+        if (editingId) {
+          const updated = await updateClinicalTemplate(editingId, modalType, field1.trim())
+          setClinical((prev) => prev.map((c) => c.id === editingId ? updated : c))
+        } else {
+          const created = await createClinicalTemplate(modalType, field1.trim())
+          setClinical((prev) => [...prev, created])
+        }
+      } else if (modalType === 'medicine') {
         if (editingId) {
           const updated = await updateFavoriteMedicine(editingId, field1.trim())
           setMedicines((prev) => prev.map((m) => m.id === editingId ? updated : m))
@@ -127,9 +148,12 @@ function SettingsPage() {
     }
   }
 
-  const handleDelete = async (type: typeof modalType, id: number) => {
+  const handleDelete = async (type: TemplateType, id: number) => {
     try {
-      if (type === 'medicine') {
+      if (isClinical(type)) {
+        await deleteClinicalTemplate(id)
+        setClinical((prev) => prev.filter((c) => c.id !== id))
+      } else if (type === 'medicine') {
         await deleteFavoriteMedicine(id)
         setMedicines((prev) => prev.filter((m) => m.id !== id))
       } else if (type === 'test') {
@@ -156,22 +180,26 @@ function SettingsPage() {
     return <Result status="error" title="Failed to load" subTitle={error} extra={<Button onClick={() => window.location.reload()}>Retry</Button>} />
   }
 
-  const modalTitle = `${editingId ? 'Edit' : 'Add'} ${modalType === 'medicine' ? 'Favorite Medicine' : modalType === 'test' ? 'Favorite Test' : modalType === 'advice' ? 'Advice Template' : 'Followup Template'}`
-
-  const label1 = modalType === 'advice' ? 'Title' : modalType === 'followup' ? 'Title' : 'Name'
-  const label2 = modalType === 'advice' ? 'Content' : modalType === 'followup' ? 'Value' : null
-
-  const sectionMeta: Record<typeof modalType, { title: string; icon: React.ReactNode; emptyText: string }> = {
-    medicine: { title: 'Favorite Medicines', icon: <MedicineBoxOutlined style={{ color: '#006D77', fontSize: 16 }} />, emptyText: 'No favorite medicines added yet' },
-    test: { title: 'Favorite Tests', icon: <ExperimentOutlined style={{ color: '#7c3aed', fontSize: 16 }} />, emptyText: 'No favorite tests added yet' },
-    advice: { title: 'Advice Templates', icon: <MessageOutlined style={{ color: '#b45309', fontSize: 16 }} />, emptyText: 'No advice templates added yet' },
-    followup: { title: 'Followup Templates', icon: <CalendarOutlined style={{ color: '#2563eb', fontSize: 16 }} />, emptyText: 'No followup templates added yet' },
+  const sectionMeta: Record<TemplateType, { title: string; singular: string; icon: React.ReactNode; emptyText: string }> = {
+    cc: { title: 'C/C — Chief Complaints', singular: 'Chief Complaint', icon: <CommentOutlined style={{ color: '#c2410c', fontSize: 16 }} />, emptyText: 'No complaint templates yet' },
+    ph: { title: 'P/H — Past History', singular: 'Past History', icon: <HistoryOutlined style={{ color: '#7c3aed', fontSize: 16 }} />, emptyText: 'No past history templates yet' },
+    oe: { title: 'O/E — On Examination', singular: 'Examination Finding', icon: <DashboardOutlined style={{ color: '#0f766e', fontSize: 16 }} />, emptyText: 'No examination templates yet' },
+    dx: { title: 'Diagnosis', singular: 'Diagnosis', icon: <FileTextOutlined style={{ color: '#006D77', fontSize: 16 }} />, emptyText: 'No diagnosis templates yet' },
+    medicine: { title: 'Favorite Medicines', singular: 'Favorite Medicine', icon: <MedicineBoxOutlined style={{ color: '#006D77', fontSize: 16 }} />, emptyText: 'No favorite medicines added yet' },
+    test: { title: 'Favorite Tests', singular: 'Favorite Test', icon: <ExperimentOutlined style={{ color: '#7c3aed', fontSize: 16 }} />, emptyText: 'No favorite tests added yet' },
+    advice: { title: 'Advice Templates', singular: 'Advice Template', icon: <MessageOutlined style={{ color: '#b45309', fontSize: 16 }} />, emptyText: 'No advice templates added yet' },
+    followup: { title: 'Followup Templates', singular: 'Followup Template', icon: <CalendarOutlined style={{ color: '#2563eb', fontSize: 16 }} />, emptyText: 'No followup templates added yet' },
   }
 
-  const renderSection = (type: typeof modalType) => {
+  const modalTitle = `${editingId ? 'Edit' : 'Add'} ${sectionMeta[modalType].singular}`
+  const label1 = isClinical(modalType) ? 'Text' : modalType === 'advice' || modalType === 'followup' ? 'Title' : 'Name'
+  const label2 = modalType === 'advice' ? 'Content' : modalType === 'followup' ? 'Value' : null
+
+  const renderSection = (type: TemplateType) => {
     const meta = sectionMeta[type]
     let items: { id: number; label: string; sub?: string }[]
-    if (type === 'medicine') items = medicines.map((m) => ({ id: m.id, label: m.name }))
+    if (isClinical(type)) items = clinical.filter((c) => c.section === type).map((c) => ({ id: c.id, label: c.text }))
+    else if (type === 'medicine') items = medicines.map((m) => ({ id: m.id, label: m.name }))
     else if (type === 'test') items = tests.map((t) => ({ id: t.id, label: t.name }))
     else if (type === 'advice') items = advices.map((a) => ({ id: a.id, label: a.title, sub: a.content }))
     else items = followups.map((f) => ({ id: f.id, label: f.title, sub: f.value }))
@@ -279,8 +307,44 @@ function SettingsPage() {
           <Form.Item label="Email" name="email">
             <Input type="email" placeholder="doctor@example.com" />
           </Form.Item>
+
+          <Divider orientation="left" plain style={{ fontWeight: 600, color: '#006D77' }}>
+            বাংলা — Bangla header (right column of the printed prescription)
+          </Divider>
+          <Form.Item label="ডাক্তারের নাম (Doctor name)" name="doctor_name_bn">
+            <Input style={bnInput} placeholder="যেমন: ডাঃ মোঃ রহিম" />
+          </Form.Item>
+          <Form.Item label="ডিগ্রি (Qualification)" name="qualification_bn">
+            <Input.TextArea style={bnInput} rows={2} placeholder="যেমন: এমবিবিএস, এমডি (এন্ডোক্রাইনোলজি)" />
+          </Form.Item>
+          <Form.Item label="পদবি / বিশেষজ্ঞতা (Specialization)" name="specialization_bn">
+            <Input style={bnInput} placeholder="যেমন: হরমোন ও ডায়াবেটিস রোগ বিশেষজ্ঞ" />
+          </Form.Item>
+          <Form.Item label="হাসপাতাল (Hospital)" name="hospital_name_bn">
+            <Input style={bnInput} />
+          </Form.Item>
+          <Form.Item label="ক্লিনিক / চেম্বার (Clinic)" name="clinic_name_bn">
+            <Input style={bnInput} />
+          </Form.Item>
+          <Form.Item label="ঠিকানা (Address)" name="address_bn">
+            <Input.TextArea style={bnInput} rows={2} />
+          </Form.Item>
+          <Form.Item label="সাক্ষাতের সময় (Visiting schedule)" name="visiting_schedule_bn">
+            <Input style={bnInput} placeholder="যেমন: শনি-বৃহস্পতি: সকাল ৯টা - বিকাল ৫টা" />
+          </Form.Item>
+          <Form.Item label="সিরিয়ালের জন্য (Appointment contact)" name="appointment_contact_bn">
+            <Input style={bnInput} />
+          </Form.Item>
         </Form>
       </Card>
+
+      <Divider plain style={{ fontSize: 16, fontWeight: 600, color: '#006D77' }}>Clinical Section Templates</Divider>
+      <Typography.Paragraph type="secondary" style={{ fontSize: 13 }}>
+        One-click picks on the prescription form. End a template with “:” (e.g. <b>BP:</b>) and clicking it puts
+        the cursor after it so you can type the value.
+      </Typography.Paragraph>
+
+      {CLINICAL_SECTIONS.map((section) => renderSection(section))}
 
       <Divider plain style={{ fontSize: 16, fontWeight: 600, color: '#006D77' }}>Quick Reference Templates</Divider>
 
