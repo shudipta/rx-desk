@@ -19,3 +19,13 @@ export interface FollowupTemplate {
   title: string
   value: string
 }
+
+/** cc = chief complaint, ph = past history, oe = on examination, dx = diagnosis */
+export type ClinicalSection = 'cc' | 'ph' | 'oe' | 'dx'
+
+/** A one-click quick pick. Text ending in ":" (e.g. "BP:") is a prefix the doctor completes. */
+export interface ClinicalTemplate {
+  id: number
+  section: ClinicalSection
+  text: string
+}

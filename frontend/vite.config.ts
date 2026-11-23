@@ -14,6 +14,7 @@ export default defineConfig({
       '/favorite-tests': 'http://localhost:8080',
       '/advice-templates': 'http://localhost:8080',
       '/followup-templates': 'http://localhost:8080',
+      '/clinical-templates': 'http://localhost:8080',
     },
   },
 })

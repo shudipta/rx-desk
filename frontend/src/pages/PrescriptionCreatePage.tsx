@@ -17,7 +17,6 @@ import {
   AutoComplete,
   Modal,
 } from 'antd'
-import type { InputRef } from 'antd'
 import {
   ArrowLeftOutlined,
   PlusOutlined,
@@ -34,6 +33,9 @@ import {
   CheckCircleOutlined,
   CheckOutlined,
   PrinterOutlined,
+  CommentOutlined,
+  HistoryOutlined,
+  DashboardOutlined,
 } from '@ant-design/icons'
 import { fetchPatient } from '../api/patients'
 import { fetchPatientPrescriptions, fetchPrescription } from '../api/prescriptions'
@@ -42,11 +44,20 @@ import {
   fetchFavoriteTests,
   fetchAdviceTemplates,
   fetchFollowupTemplates,
+  fetchClinicalTemplates,
 } from '../api/templates'
+import ClinicalListCard from '../components/ClinicalListCard'
 import { createPrescription, updatePrescription } from '../api/prescriptions'
 import type { Patient } from '../types/patient'
-import type { PatientPrescription, Prescription } from '../types/prescription'
-import type { FavoriteMedicine, FavoriteTest, AdviceTemplate, FollowupTemplate } from '../types/template'
+import type { PatientPrescription, Prescription, MealTiming } from '../types/prescription'
+import type {
+  FavoriteMedicine,
+  FavoriteTest,
+  AdviceTemplate,
+  FollowupTemplate,
+  ClinicalTemplate,
+  ClinicalSection,
+} from '../types/template'
 import type { CreatePrescriptionPayload } from '../types/prescription'
 
 const DURATION_OPTIONS = [
@@ -65,8 +76,6 @@ const DURATION_OPTIONS = [
 ]
 
 const INSTRUCTION_OPTIONS = [
-  { value: 'After meals', label: 'After meals' },
-  { value: 'Before meals', label: 'Before meals' },
   { value: 'With breakfast', label: 'With breakfast' },
   { value: 'At bedtime', label: 'At bedtime' },
   { value: 'As needed', label: 'As needed' },
@@ -84,6 +93,46 @@ interface MedicineEntry {
   dosage: string
   duration: string
   instructions: string
+  meal_timing: MealTiming
+}
+
+/** Older prescriptions kept "After meal(s)"/"Before meal(s)" in instructions; lift it into meal_timing. */
+function splitMealTiming(m: { instructions: string; meal_timing?: MealTiming }) {
+  if (m.meal_timing) return { meal_timing: m.meal_timing, instructions: m.instructions }
+  const match = /^\s*(before|after)\s+meals?\s*$/i.exec(m.instructions || '')
+  return match
+    ? { meal_timing: match[1].toLowerCase() as MealTiming, instructions: '' }
+    : { meal_timing: '' as MealTiming, instructions: m.instructions }
+}
+
+/** Title used until the doctor types their own: diagnoses, else complaints, else visit type. */
+function autoTitle(diagnoses: string[], complaints: string[], visitType: string) {
+  const list = (xs: string[]) => {
+    const v = xs.map((x) => x.trim()).filter(Boolean)
+    return v.length > 2 ? `${v.slice(0, 2).join(', ')} +${v.length - 2}` : v.join(', ')
+  }
+  return list(diagnoses) || list(complaints) || `${visitType} consultation`
+}
+
+function MealTimingInput({ value, onChange }: { value: MealTiming; onChange: (v: MealTiming) => void }) {
+  const option = (v: 'before' | 'after', label: string) => (
+    <Button
+      size="small"
+      type={value === v ? 'primary' : 'default'}
+      onClick={() => onChange(value === v ? '' : v)}
+      style={{ padding: '0 8px', fontSize: 12 }}
+    >
+      {label}
+    </Button>
+  )
+  return (
+    <Tooltip title="Before / after meal — click again to clear">
+      <Space.Compact>
+        {option('before', 'Before')}
+        {option('after', 'After')}
+      </Space.Compact>
+    </Tooltip>
+  )
 }
 
 function DosageInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -205,17 +254,21 @@ function PrescriptionCreatePage() {
   const { id: patientParam, rxId } = useParams<{ id?: string; rxId?: string }>()
   const editId = rxId ? Number(rxId) : undefined
   const navigate = useNavigate()
-  const titleRef = useRef<InputRef>(null)
 
   const [patient, setPatient] = useState<Patient | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const [title, setTitle] = useState('')
+  // false = the title follows the diagnoses automatically
+  const [titleTouched, setTitleTouched] = useState(false)
   const [visitType, setVisitType] = useState('OPD')
   const [followup, setFollowup] = useState('')
   const [notes, setNotes] = useState('')
-  const [diagnoses, setDiagnoses] = useState<string[]>([''])
+  const [complaints, setComplaints] = useState<string[]>([])
+  const [histories, setHistories] = useState<string[]>([])
+  const [examinations, setExaminations] = useState<string[]>([])
+  const [diagnoses, setDiagnoses] = useState<string[]>([])
   const [medicines, setMedicines] = useState<MedicineEntry[]>([])
   const [tests, setTests] = useState<string[]>([])
   const [advices, setAdvices] = useState<string[]>([''])
@@ -224,6 +277,7 @@ function PrescriptionCreatePage() {
   const [favoriteTests, setFavoriteTests] = useState<FavoriteTest[]>([])
   const [adviceTemplates, setAdviceTemplates] = useState<AdviceTemplate[]>([])
   const [followupTemplates, setFollowupTemplates] = useState<FollowupTemplate[]>([])
+  const [clinicalTemplates, setClinicalTemplates] = useState<ClinicalTemplate[]>([])
 
   const [previousPrescriptions, setPreviousPrescriptions] = useState<PatientPrescription[]>([])
   const [cloning, setCloning] = useState(false)
@@ -245,7 +299,7 @@ function PrescriptionCreatePage() {
         }
         if (!patientId) throw new Error('Patient not found')
 
-        const [patientData, favMeds, favTests, advTemplates, fuTemplates, prevRx] =
+        const [patientData, favMeds, favTests, advTemplates, fuTemplates, prevRx, clinTemplates] =
           await Promise.all([
             fetchPatient(patientId),
             fetchFavoriteMedicines(),
@@ -253,6 +307,7 @@ function PrescriptionCreatePage() {
             fetchAdviceTemplates(),
             fetchFollowupTemplates(),
             fetchPatientPrescriptions(patientId),
+            fetchClinicalTemplates(),
           ])
         if (cancelled) return
         setPatient(patientData)
@@ -260,10 +315,11 @@ function PrescriptionCreatePage() {
         setFavoriteTests(favTests)
         setAdviceTemplates(advTemplates)
         setFollowupTemplates(fuTemplates)
+        setClinicalTemplates(clinTemplates)
         setPreviousPrescriptions(prevRx)
 
         if (editRx) {
-          applyPrescription(editRx)
+          applyPrescription(editRx, true)
         } else if (prevRx.length > 0) {
           await clonePrescription(prevRx[0].id, false)
         }
@@ -279,26 +335,30 @@ function PrescriptionCreatePage() {
     }
   }, [patientParam, editId])
 
-  useEffect(() => {
-    if (!loading && patient) {
-      setTimeout(() => titleRef.current?.focus(), 100)
-    }
-  }, [loading, patient])
-
   // Replace every field, so switching between older prescriptions never
   // leaves values from the previous one behind.
-  const applyPrescription = (rx: Prescription) => {
-    setTitle(rx.title ?? '')
-    setVisitType(rx.visit_type || 'OPD')
+  // asEdit: keep the saved title (unless it was the automatic one); a clone
+  // for a new visit gets a fresh automatic title.
+  const applyPrescription = (rx: Prescription, asEdit = false) => {
+    const dx = rx.diagnoses?.map((d) => d.diagnosis_text) ?? []
+    const cc = rx.complaints?.map((c) => c.complaint_text) ?? []
+    const visit = rx.visit_type || 'OPD'
+    const customTitle = asEdit && !!rx.title && rx.title !== autoTitle(dx, cc, visit)
+    setTitle(customTitle ? rx.title : '')
+    setTitleTouched(customTitle)
+    setVisitType(visit)
     setFollowup(rx.followup ?? '')
     setNotes(rx.notes ?? '')
-    setDiagnoses(rx.diagnoses?.length ? rx.diagnoses.map((d) => d.diagnosis_text) : [''])
+    setComplaints(cc)
+    setHistories(rx.histories?.map((h) => h.history_text) ?? [])
+    setExaminations(rx.examinations?.map((e) => e.examination_text) ?? [])
+    setDiagnoses(dx)
     setMedicines(
       rx.medicines?.map((m) => ({
         medicine_name: m.medicine_name,
         dosage: m.dosage,
         duration: m.duration,
-        instructions: m.instructions,
+        ...splitMealTiming(m),
       })) ?? [],
     )
     setTests(rx.tests?.map((t) => t.test_name) ?? [])
@@ -318,31 +378,11 @@ function PrescriptionCreatePage() {
     }
   }
 
-  const handleDiagnosisChange = (index: number, value: string) => {
-    setDiagnoses((prev) => {
-      const next = [...prev]
-      next[index] = value
-      return next
-    })
-  }
-
   const isMedicineSelected = (name: string) => medicines.some((m) => m.medicine_name === name)
 
   const isTestSelected = (name: string) => tests.includes(name)
 
   const isAdviceSelected = (content: string) => advices.includes(content)
-
-  const addDiagnosis = (value = '') => {
-    setDiagnoses((prev) => {
-      if (value && prev.length === 1 && !prev[0].trim()) {
-        return [value]
-      }
-      return [...prev, value]
-    })
-  }
-
-  const removeDiagnosis = (index: number) =>
-    setDiagnoses((prev) => prev.filter((_, i) => i !== index))
 
   const handleMedicineChange = (index: number, field: keyof MedicineEntry, value: string) => {
     setMedicines((prev) => {
@@ -355,7 +395,7 @@ function PrescriptionCreatePage() {
   const addMedicine = (name = '') =>
     setMedicines((prev) => [
       ...prev,
-      { medicine_name: name, dosage: '', duration: '', instructions: '' },
+      { medicine_name: name, dosage: '', duration: '', instructions: '', meal_timing: '' },
     ])
 
   const removeMedicine = (index: number) =>
@@ -420,8 +460,11 @@ function PrescriptionCreatePage() {
 
   // Unsaved-changes tracking: compare the form with what was loaded.
   const formSnapshot = useMemo(
-    () => JSON.stringify({ title, visitType, followup, notes, diagnoses, medicines, tests, advices }),
-    [title, visitType, followup, notes, diagnoses, medicines, tests, advices],
+    () =>
+      JSON.stringify({
+        title, visitType, followup, notes, complaints, histories, examinations, diagnoses, medicines, tests, advices,
+      }),
+    [title, visitType, followup, notes, complaints, histories, examinations, diagnoses, medicines, tests, advices],
   )
   const baselineRef = useRef<string | null>(null)
   useEffect(() => {
@@ -455,19 +498,22 @@ function PrescriptionCreatePage() {
     })
   }
 
+  const effectiveTitle = titleTouched ? title : autoTitle(diagnoses, complaints, visitType)
+  const templatesFor = (section: ClinicalSection) => clinicalTemplates.filter((t) => t.section === section)
+  const clean = (xs: string[]) => xs.map((x) => x.trim()).filter(Boolean)
+
   const handleSubmit = async (print = false) => {
     if (!patient || submitting) return
     const hasContent =
-      diagnoses.some((d) => d.trim()) ||
+      [complaints, histories, examinations, diagnoses].some((xs) => clean(xs).length > 0) ||
       medicines.some((m) => m.medicine_name.trim()) ||
       tests.some((t) => t.trim()) ||
       advices.some((a) => a.trim())
     if (!hasContent) {
-      setSubmitError('Add at least one diagnosis, medicine, test or advice')
+      setSubmitError('Add at least one complaint, finding, diagnosis, medicine, test or advice')
       return
     }
-    // Title is optional: fall back to the first diagnosis, then the visit type.
-    const finalTitle = title.trim() || diagnoses.find((d) => d.trim())?.trim() || visitType
+    const finalTitle = effectiveTitle.trim() || autoTitle(diagnoses, complaints, visitType)
 
     setSubmitting(true)
     setSubmitError(null)
@@ -479,9 +525,10 @@ function PrescriptionCreatePage() {
         visit_type: visitType,
         followup,
         notes,
-        diagnoses: diagnoses
-          .filter((d) => d.trim())
-          .map((d) => ({ diagnosis_text: d.trim() })),
+        complaints: clean(complaints).map((t) => ({ complaint_text: t })),
+        histories: clean(histories).map((t) => ({ history_text: t })),
+        examinations: clean(examinations).map((t) => ({ examination_text: t })),
+        diagnoses: clean(diagnoses).map((t) => ({ diagnosis_text: t })),
         medicines: medicines
           .filter((m) => m.medicine_name.trim())
           .map((m) => ({
@@ -489,6 +536,7 @@ function PrescriptionCreatePage() {
             dosage: m.dosage.trim(),
             duration: m.duration.trim(),
             instructions: m.instructions.trim(),
+            meal_timing: m.meal_timing,
           })),
         tests: tests
           .filter((t) => t.trim())
@@ -681,11 +729,23 @@ function PrescriptionCreatePage() {
             <Row gutter={12}>
               <Col span={8}>
                 <Input
-                  ref={titleRef}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Title (optional — uses diagnosis)"
+                  value={effectiveTitle}
+                  onChange={(e) => {
+                    setTitle(e.target.value)
+                    // Clearing the field hands the title back to auto-fill
+                    setTitleTouched(e.target.value.trim() !== '')
+                  }}
+                  placeholder="Title"
                   size="middle"
+                  suffix={
+                    !titleTouched && (
+                      <Tooltip title="Filled from the diagnoses. Type to set your own; clear to go back to automatic.">
+                        <Tag color="green" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>
+                          auto
+                        </Tag>
+                      </Tooltip>
+                    )
+                  }
                 />
               </Col>
               <Col span={5}>
@@ -757,49 +817,72 @@ function PrescriptionCreatePage() {
             )}
           </Card>
 
-          <Card
-            title={
-              <span style={{ fontWeight: 700, fontSize: 14 }}>
-                <FileTextOutlined style={{ marginRight: 6, color: '#006D77' }} />
-                Diagnoses
-              </span>
-            }
-            style={{ borderRadius: 16, marginBottom: 20 }}
-            bodyStyle={{ padding: '14px 20px' }}
-            extra={
-              <Button
-                type="dashed"
-                icon={<PlusOutlined />}
-                onClick={() => addDiagnosis()}
-                size="small"
-              >
-                Add
-              </Button>
-            }
-          >
-            {diagnoses.map((d, i) => (
-              <Row key={i} gutter={6} style={{ marginBottom: 6 }}>
-                <Col flex="auto">
-                  <Input
-                    value={d}
-                    onChange={(e) => handleDiagnosisChange(i, e.target.value)}
-                    placeholder="Enter diagnosis"
-                    size="small"
-                    onPressEnter={() => addDiagnosis()}
-                  />
-                </Col>
-                <Col>
-                  <Button
-                    icon={<MinusCircleOutlined />}
-                    danger
-                    onClick={() => removeDiagnosis(i)}
-                    size="small"
-                    style={{ borderRadius: 6 }}
-                  />
-                </Col>
-              </Row>
-            ))}
-          </Card>
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <ClinicalListCard
+                title={
+                  <>
+                    <CommentOutlined style={{ marginRight: 6, color: '#006D77' }} />
+                    C/C{' '}
+                    <span style={{ fontWeight: 400, fontSize: 12, color: '#9ca3af' }}>Chief complaints</span>
+                  </>
+                }
+                color="#c2410c"
+                items={complaints}
+                onChange={setComplaints}
+                templates={templatesFor('cc')}
+                placeholder="What the patient reports"
+              />
+            </Col>
+            <Col xs={24} md={12}>
+              <ClinicalListCard
+                title={
+                  <>
+                    <HistoryOutlined style={{ marginRight: 6, color: '#006D77' }} />
+                    P/H{' '}
+                    <span style={{ fontWeight: 400, fontSize: 12, color: '#9ca3af' }}>Past history</span>
+                  </>
+                }
+                color="#7c3aed"
+                items={histories}
+                onChange={setHistories}
+                templates={templatesFor('ph')}
+                placeholder="Previous illness, surgery, ..."
+              />
+            </Col>
+            <Col xs={24} md={12}>
+              <ClinicalListCard
+                title={
+                  <>
+                    <DashboardOutlined style={{ marginRight: 6, color: '#006D77' }} />
+                    O/E{' '}
+                    <span style={{ fontWeight: 400, fontSize: 12, color: '#9ca3af' }}>On examination</span>
+                  </>
+                }
+                color="#0f766e"
+                items={examinations}
+                onChange={setExaminations}
+                templates={templatesFor('oe')}
+                placeholder="What you observe or measure"
+              />
+            </Col>
+            <Col xs={24} md={12}>
+              <ClinicalListCard
+                title={
+                  <>
+                    <FileTextOutlined style={{ marginRight: 6, color: '#006D77' }} />
+                    Diagnosis{' '}
+                    <span style={{ fontWeight: 400, fontSize: 12, color: '#9ca3af' }}></span>
+                  </>
+                }
+                color="#006D77"
+                items={diagnoses}
+                onChange={setDiagnoses}
+                templates={templatesFor('dx')}
+                placeholder="Enter diagnosis"
+              />
+            </Col>
+          </Row>
 
           <Card
             title={
@@ -825,11 +908,12 @@ function PrescriptionCreatePage() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    <th style={{ width: '24%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>MEDICINE</th>
-                    <th style={{ width: '22%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>DOSAGE (M+A+E)</th>
-                    <th style={{ width: '14%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>DURATION</th>
-                    <th style={{ width: '24%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>INSTRUCTIONS</th>
-                    <th style={{ width: '8%', padding: '4px 6px' }} />
+                    <th style={{ width: '22%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>MEDICINE</th>
+                    <th style={{ width: '21%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>DOSAGE (M+A+E)</th>
+                    <th style={{ width: '13%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>MEAL</th>
+                    <th style={{ width: '13%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>DURATION</th>
+                    <th style={{ width: '25%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>INSTRUCTIONS</th>
+                    <th style={{ width: '6%', padding: '4px 6px' }} />
                   </tr>
                 </thead>
                 <tbody>
@@ -849,6 +933,12 @@ function PrescriptionCreatePage() {
                         <DosageInput
                           value={m.dosage}
                           onChange={(v) => handleMedicineChange(i, 'dosage', v)}
+                        />
+                      </td>
+                      <td style={{ padding: '3px 4px', verticalAlign: 'middle' }}>
+                        <MealTimingInput
+                          value={m.meal_timing}
+                          onChange={(v) => handleMedicineChange(i, 'meal_timing', v)}
                         />
                       </td>
                       <td style={{ padding: '3px 4px' }}>

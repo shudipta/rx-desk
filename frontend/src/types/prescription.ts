@@ -12,6 +12,25 @@ export interface PrescriptionMedicine {
   dosage: string
   duration: string
   instructions: string
+  meal_timing: MealTiming
+}
+
+/** When to take a medicine relative to food; '' = not specified */
+export type MealTiming = '' | 'before' | 'after'
+
+export interface PrescriptionComplaint {
+  id: number
+  complaint_text: string
+}
+
+export interface PrescriptionHistory {
+  id: number
+  history_text: string
+}
+
+export interface PrescriptionExamination {
+  id: number
+  examination_text: string
 }
 
 export interface PrescriptionTest {
@@ -43,6 +62,9 @@ export interface Prescription {
   tests: PrescriptionTest[]
   advices: PrescriptionAdvice[]
   diagnoses: PrescriptionDiagnosis[]
+  complaints?: PrescriptionComplaint[]
+  histories?: PrescriptionHistory[]
+  examinations?: PrescriptionExamination[]
 }
 
 export interface CreatePrescriptionPayload {
@@ -51,12 +73,16 @@ export interface CreatePrescriptionPayload {
   visit_type: string
   followup: string
   notes: string
+  complaints: { complaint_text: string }[]
+  histories: { history_text: string }[]
+  examinations: { examination_text: string }[]
   diagnoses: { diagnosis_text: string }[]
   medicines: {
     medicine_name: string
     dosage: string
     duration: string
     instructions: string
+    meal_timing: MealTiming
   }[]
   tests: { test_name: string }[]
   advices: { advice_text: string }[]

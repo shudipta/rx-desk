@@ -1,5 +1,12 @@
 import { apiGet, apiPost, apiPut, apiDelete } from './client'
-import type { FavoriteMedicine, FavoriteTest, AdviceTemplate, FollowupTemplate } from '../types/template'
+import type {
+  FavoriteMedicine,
+  FavoriteTest,
+  AdviceTemplate,
+  FollowupTemplate,
+  ClinicalTemplate,
+  ClinicalSection,
+} from '../types/template'
 
 export function fetchFavoriteMedicines(): Promise<FavoriteMedicine[]> {
   return apiGet<FavoriteMedicine[]>('/favorite-medicines')
@@ -63,4 +70,20 @@ export function updateFollowupTemplate(id: number, title: string, value: string)
 
 export function deleteFollowupTemplate(id: number): Promise<void> {
   return apiDelete(`/followup-templates/${id}`)
+}
+
+export function fetchClinicalTemplates(): Promise<ClinicalTemplate[]> {
+  return apiGet<ClinicalTemplate[]>('/clinical-templates')
+}
+
+export function createClinicalTemplate(section: ClinicalSection, text: string): Promise<ClinicalTemplate> {
+  return apiPost<ClinicalTemplate>('/clinical-templates', { section, text })
+}
+
+export function updateClinicalTemplate(id: number, section: ClinicalSection, text: string): Promise<ClinicalTemplate> {
+  return apiPut<ClinicalTemplate>(`/clinical-templates/${id}`, { section, text })
+}
+
+export function deleteClinicalTemplate(id: number): Promise<void> {
+  return apiDelete(`/clinical-templates/${id}`)
 }
