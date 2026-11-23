@@ -63,6 +63,9 @@ GET /favorite-medicines
 GET /favorite-tests
 GET /advice-templates
 GET /followup-templates
+GET|POST /clinical-templates, PUT|DELETE /clinical-templates/:id
+  Quick picks for C/C, P/H, O/E and Diagnosis. Body: { section: cc|ph|oe|dx, text }.
+  Text ending in ":" (e.g. "BP:") is a prefix the doctor completes with a value.
 
 ## Doctor Profile APIs
 
@@ -84,13 +87,18 @@ GET /stats/dashboard
 
 Patient
   └── Prescriptions
+        ├── Complaints[]    (C/C — chief complaints: what the patient reports)
+        ├── Histories[]     (P/H — past history)
+        ├── Examinations[]  (O/E — what the doctor observes or measures)
         ├── Diagnoses[]
         ├── Advices[]
         ├── Medicines[]
         ├── Tests[]
         └── Followup (single value)
 
-Diagnosis, Advice, Medicine, Test are stored in separate tables.
+Complaint, History, Examination, Diagnosis, Advice, Medicine, Test are stored in separate tables.
+Medicine has meal_timing: "before" | "after" | "" (printed in Bangla and English).
+DoctorProfile has *_bn fields; the printed header shows English left, Bangla right.
 
 ---
 
@@ -111,7 +119,7 @@ Never expose: CreatedAt, UpdatedAt, DeletedAt, foreign key fields unless require
 
 # JSON Quirk (omitempty)
 
-Backend uses `omitempty` on JSON tags. Empty arrays are omitted from the response,
+Backend uses `omitempty` on most JSON tags (complaints/histories/examinations always return []). Empty arrays are omitted from the response,
 resulting in `undefined` in JavaScript. Always use optional chaining (`?.`)
 when accessing nested arrays from backend responses (e.g., `rx.diagnoses?.map(...)`).
 
