@@ -58,35 +58,35 @@ import type {
   ClinicalTemplate,
   ClinicalSection,
 } from '../types/template'
+import { bnFont, toBnDigits } from '../utils/bangla'
 import type { CreatePrescriptionPayload } from '../types/prescription'
 
+// Everything but the medicine name is printed for the patient, so the values
+// are Bangla; the English in each label lets the doctor search in either language.
+const bnOption = ([bn, en]: string[]) => ({ value: bn, label: `${bn} (${en})` })
+
 const DURATION_OPTIONS = [
-  { value: '3 days', label: '3 days' },
-  { value: '5 days', label: '5 days' },
-  { value: '7 days', label: '7 days' },
-  { value: '10 days', label: '10 days' },
-  { value: '14 days', label: '14 days' },
-  { value: '21 days', label: '21 days' },
-  { value: '30 days', label: '30 days' },
-  { value: '45 days', label: '45 days' },
-  { value: '60 days', label: '60 days' },
-  { value: '3 months', label: '3 months' },
-  { value: '6 months', label: '6 months' },
-  { value: 'Ongoing', label: 'Ongoing' },
-]
+  ...[3, 5, 7, 10, 14, 21, 30, 45, 60].map((n) => [`${toBnDigits(String(n))} দিন`, `${n} days`]),
+  ['১ মাস', '1 month'],
+  ['২ মাস', '2 months'],
+  ['৩ মাস', '3 months'],
+  ['৬ মাস', '6 months'],
+  ['চলবে', 'Ongoing'],
+].map(bnOption)
 
 const INSTRUCTION_OPTIONS = [
-  { value: 'With breakfast', label: 'With breakfast' },
-  { value: 'At bedtime', label: 'At bedtime' },
-  { value: 'As needed', label: 'As needed' },
-  { value: 'Twice daily', label: 'Twice daily' },
-  { value: 'Once daily', label: 'Once daily' },
-  { value: 'Empty stomach', label: 'Empty stomach' },
-  { value: 'With water', label: 'With water' },
-]
+  ['খালি পেটে', 'Empty stomach'],
+  ['সকালের নাস্তার সাথে', 'With breakfast'],
+  ['রাতে ঘুমানোর আগে', 'At bedtime'],
+  ['দিনে একবার', 'Once daily'],
+  ['দিনে দুইবার', 'Twice daily'],
+  ['সপ্তাহে একবার', 'Once weekly'],
+  ['প্রয়োজন হলে', 'As needed'],
+  ['পানির সাথে', 'With water'],
+].map(bnOption)
 
-const filterPreset = (input: string, option?: { value: string }) =>
-  (option?.value ?? '').toLowerCase().includes(input.toLowerCase())
+const filterPreset = (input: string, option?: { value: string; label?: string }) =>
+  `${option?.value ?? ''} ${option?.label ?? ''}`.toLowerCase().includes(input.toLowerCase())
 
 interface MedicineEntry {
   medicine_name: string
@@ -120,16 +120,16 @@ function MealTimingInput({ value, onChange }: { value: MealTiming; onChange: (v:
       size="small"
       type={value === v ? 'primary' : 'default'}
       onClick={() => onChange(value === v ? '' : v)}
-      style={{ padding: '0 8px', fontSize: 12 }}
+      style={{ padding: '0 8px', fontSize: 12, fontFamily: bnFont }}
     >
       {label}
     </Button>
   )
   return (
-    <Tooltip title="Before / after meal — click again to clear">
+    <Tooltip title="খাবারের আগে / পরে (before / after meal) — click again to clear">
       <Space.Compact>
-        {option('before', 'Before')}
-        {option('after', 'After')}
+        {option('before', 'আগে')}
+        {option('after', 'পরে')}
       </Space.Compact>
     </Tooltip>
   )
@@ -158,14 +158,14 @@ function DosageInput({ value, onChange }: { value: string; onChange: (v: string)
   }) => {
     const n = parseFloat(val) || 0
     return (
-      <Tooltip title={`${label} dose (0-9)`}>
+      <Tooltip title={`${label} — ডোজ`}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <span
             style={{
-              fontSize: 9,
-              fontWeight: 700,
+              fontSize: 10,
+              fontWeight: 600,
               color: '#6b7280',
-              textTransform: 'uppercase',
+              fontFamily: bnFont,
               marginBottom: 1,
             }}
           >
@@ -208,7 +208,7 @@ function DosageInput({ value, onChange }: { value: string; onChange: (v: string)
                 borderBottom: '1px solid #e5e7eb',
               }}
             >
-              {n}
+              {toBnDigits(String(n))}
             </span>
             <button
               type="button"
@@ -239,11 +239,11 @@ function DosageInput({ value, onChange }: { value: string; onChange: (v: string)
 
   return (
     <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-      <Slot label="M" val={morning} onChange={(v) => update(0, v)} />
+      <Slot label="সকাল" val={morning} onChange={(v) => update(0, v)} />
       <span style={{ color: '#d1d5db', fontSize: 11, fontWeight: 700 }}>+</span>
-      <Slot label="A" val={afternoon} onChange={(v) => update(1, v)} />
+      <Slot label="দুপুর" val={afternoon} onChange={(v) => update(1, v)} />
       <span style={{ color: '#d1d5db', fontSize: 11, fontWeight: 700 }}>+</span>
-      <Slot label="E" val={evening} onChange={(v) => update(2, v)} />
+      <Slot label="রাত" val={evening} onChange={(v) => update(2, v)} />
     </div>
   )
 }
@@ -767,8 +767,9 @@ function PrescriptionCreatePage() {
                 <Input
                   value={followup}
                   onChange={(e) => setFollowup(e.target.value)}
-                  placeholder="Follow-up (e.g., 3m)"
+                  placeholder="পরবর্তী সাক্ষাৎ (যেমন: ৩ মাস পর)"
                   size="middle"
+                  style={{ fontFamily: bnFont }}
                 />
               </Col>
               <Col span={6}>
@@ -909,10 +910,10 @@ function PrescriptionCreatePage() {
                 <thead>
                   <tr>
                     <th style={{ width: '22%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>MEDICINE</th>
-                    <th style={{ width: '21%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>DOSAGE (M+A+E)</th>
-                    <th style={{ width: '13%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>MEAL</th>
-                    <th style={{ width: '13%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>DURATION</th>
-                    <th style={{ width: '25%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>INSTRUCTIONS</th>
+                    <th style={{ width: '21%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>DOSAGE · <span style={{ fontFamily: bnFont }}>ডোজ</span></th>
+                    <th style={{ width: '13%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>MEAL · <span style={{ fontFamily: bnFont }}>খাবার</span></th>
+                    <th style={{ width: '13%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>DURATION · <span style={{ fontFamily: bnFont }}>মেয়াদ</span></th>
+                    <th style={{ width: '25%', textAlign: 'left', padding: '4px 6px', fontSize: 11, fontWeight: 600, color: '#6b7280' }}>INSTRUCTIONS · <span style={{ fontFamily: bnFont }}>নির্দেশনা</span></th>
                     <th style={{ width: '6%', padding: '4px 6px' }} />
                   </tr>
                 </thead>
@@ -946,10 +947,11 @@ function PrescriptionCreatePage() {
                           value={m.duration}
                           onChange={(v) => handleMedicineChange(i, 'duration', v ?? '')}
                           size="small"
-                          style={{ width: '100%' }}
+                          style={{ width: '100%', fontFamily: bnFont }}
                           options={DURATION_OPTIONS}
                           filterOption={filterPreset}
-                          placeholder="Duration"
+                          placeholder="মেয়াদ"
+                          popupMatchSelectWidth={false}
                         />
                       </td>
                       <td style={{ padding: '3px 4px' }}>
@@ -957,10 +959,11 @@ function PrescriptionCreatePage() {
                           value={m.instructions}
                           onChange={(v) => handleMedicineChange(i, 'instructions', v ?? '')}
                           size="small"
-                          style={{ width: '100%' }}
+                          style={{ width: '100%', fontFamily: bnFont }}
                           options={INSTRUCTION_OPTIONS}
                           filterOption={filterPreset}
-                          placeholder="Instructions"
+                          placeholder="নির্দেশনা"
+                          popupMatchSelectWidth={false}
                         />
                       </td>
                       <td style={{ padding: '3px 4px', textAlign: 'center' }}>
@@ -1059,8 +1062,9 @@ function PrescriptionCreatePage() {
                   <Input.TextArea
                     value={a}
                     onChange={(e) => handleAdviceChange(i, e.target.value)}
-                    placeholder="Enter advice"
+                    placeholder="পরামর্শ লিখুন (Enter advice)"
                     rows={4}
+                    style={{ fontFamily: bnFont }}
                   />
                 </Col>
                 <Col>

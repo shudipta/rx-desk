@@ -6,11 +6,10 @@ import { fetchPrescription } from '../api/prescriptions'
 import { getDoctorProfile } from '../api/doctor'
 import type { Prescription } from '../types/prescription'
 import type { DoctorProfile } from '../types/doctor'
+import { bnDuration, bnFollowup, bnFont, toBnDigits } from '../utils/bangla'
 
 const teal = '#006D77'
 const lightTeal = '#e8f4f4'
-// Bangla text: web font when online, then the system Bangla fonts of macOS / Windows
-const bnFont = "'Noto Sans Bengali', 'Kohinoor Bangla', 'Bangla Sangam MN', 'Nirmala UI', 'Vrinda', sans-serif"
 
 // A4 sheet. On a hospital's pre-printed pad the doctor info (top ~30%) and the
 // visiting schedule (bottom ~12.5%) are already on the paper. Pad mode (the
@@ -20,9 +19,9 @@ const A4_HEIGHT_MM = 297
 const PAD_TOP_MM = A4_HEIGHT_MM * 0.3 // 89.1mm
 const PAD_BOTTOM_MM = A4_HEIGHT_MM * 0.125 // 37.1mm
 
-const MEAL_TIMING: Record<string, { en: string; bn: string }> = {
-  before: { en: 'Before meal', bn: 'খাবারের আগে' },
-  after: { en: 'After meal', bn: 'খাবারের পরে' },
+const MEAL_TIMING: Record<string, string> = {
+  before: 'খাবারের আগে',
+  after: 'খাবারের পরে',
 }
 
 const styles = {
@@ -441,16 +440,15 @@ function PrescriptionViewPage() {
                       {prescription.medicines.map((m) => (
                         <tr key={m.id}>
                           <td style={{ ...styles.medicineTd, fontWeight: 600 }}>{m.medicine_name}</td>
-                          <td style={styles.medicineTd}>{m.dosage}</td>
-                          <td style={styles.medicineTd}>{m.duration}</td>
+                          <td style={{ ...styles.medicineTd, fontFamily: bnFont }}>{toBnDigits(m.dosage)}</td>
+                          <td style={{ ...styles.medicineTd, fontFamily: bnFont }}>{bnDuration(m.duration)}</td>
                           <td style={styles.medicineTd}>
                             {MEAL_TIMING[m.meal_timing] && (
                               <div>
-                                <span style={{ fontFamily: bnFont, fontWeight: 600 }}>{MEAL_TIMING[m.meal_timing].bn}</span>{' '}
-                                <span style={{ color: '#666', fontSize: 11 }}>({MEAL_TIMING[m.meal_timing].en})</span>
+                                <span style={{ fontFamily: bnFont, fontWeight: 600 }}>{MEAL_TIMING[m.meal_timing]}</span>
                               </div>
                             )}
-                            {m.instructions && <div>{m.instructions}</div>}
+                            {m.instructions && <div style={{ fontFamily: bnFont }}>{m.instructions}</div>}
                           </td>
                         </tr>
                       ))}
@@ -461,11 +459,14 @@ function PrescriptionViewPage() {
 
               {prescription.advices?.length > 0 && (
                 <div style={styles.section}>
-                  <div style={styles.sectionTitle}>ADVICE &amp; INSTRUCTIONS</div>
+                  <div style={styles.sectionTitle}>
+                    ADVICE &amp; INSTRUCTIONS
+                    <span style={{ ...styles.sectionSub, fontFamily: bnFont }}> · পরামর্শ</span>
+                  </div>
                   {prescription.advices.flatMap((a) => {
                     const lines = a.advice_text.split('\n').filter(Boolean)
                     return lines.map((line, i) => (
-                      <div key={`${a.id}-${i}`} style={styles.bullet}>• {line.replace(/^[-•]\s*/, '')}</div>
+                      <div key={`${a.id}-${i}`} style={{ ...styles.bullet, fontFamily: bnFont }}>• {line.replace(/^[-•]\s*/, '')}</div>
                     ))
                   })}
                 </div>
@@ -473,8 +474,8 @@ function PrescriptionViewPage() {
 
               {padMode && prescription.followup && (
                 <div style={styles.section}>
-                  <span style={{ fontWeight: 600, color: teal }}>Follow-up: </span>
-                  {prescription.followup}
+                  <span style={{ fontWeight: 600, color: teal, fontFamily: bnFont }}>পরবর্তী সাক্ষাৎ: </span>
+                  <span style={{ fontFamily: bnFont }}>{bnFollowup(prescription.followup)}</span>
                 </div>
               )}
             </div>
@@ -491,8 +492,8 @@ function PrescriptionViewPage() {
               {/* On the pad the follow-up prints in the Rx column instead */}
               {!padMode && (
                 <>
-                  <span style={{ fontWeight: 600, color: teal }}>Follow-up Interval: </span>
-                  {prescription.followup || 'Not specified'}
+                  <span style={{ fontWeight: 600, color: teal, fontFamily: bnFont }}>পরবর্তী সাক্ষাৎ: </span>
+                  <span style={{ fontFamily: bnFont }}>{prescription.followup ? bnFollowup(prescription.followup) : '—'}</span>
                 </>
               )}
               {(dp?.visiting_schedule_bn || dp?.appointment_contact_bn) && (

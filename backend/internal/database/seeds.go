@@ -52,46 +52,90 @@ func Seed(db *gorm.DB) error {
 			return fmt.Errorf("failed to seed favorite tests: %w", err)
 		}
 
-		if err := seedIfEmpty(tx, []models.AdviceTemplate{
+		// Advice is printed for the patient, so the content is in Bangla
+		adviceSeeds := []struct{ title, oldContent, content string }{
 			{
-				Title: "Diabetes Advice",
-				Content: `- Low carbohydrate diet
+				title: "Diabetes Advice",
+				oldContent: `- Low carbohydrate diet
 - Regular exercise
 - Weight reduction
 - Avoid sugary foods
 - Monitor blood glucose regularly`,
+				content: `- শর্করা জাতীয় খাবার কম খাবেন
+- নিয়মিত ব্যায়াম করবেন
+- ওজন কমাবেন
+- চিনি ও মিষ্টি জাতীয় খাবার খাবেন না
+- নিয়মিত রক্তের গ্লুকোজ পরীক্ষা করবেন`,
 			},
 			{
-				Title: "Thyroid Advice",
-				Content: `- Take medicine on an empty stomach
+				title: "Thyroid Advice",
+				oldContent: `- Take medicine on an empty stomach
 - Take medication at the same time daily
 - Follow-up thyroid function tests regularly`,
+				content: `- ঔষধ খালি পেটে খাবেন
+- প্রতিদিন একই সময়ে ঔষধ খাবেন
+- নিয়মিত থাইরয়েড পরীক্ষা করাবেন`,
 			},
 			{
-				Title: "PCOS Advice",
-				Content: `- Weight management
+				title: "PCOS Advice",
+				oldContent: `- Weight management
 - Regular exercise
 - Healthy diet
 - Adequate sleep`,
+				content: `- ওজন নিয়ন্ত্রণে রাখবেন
+- নিয়মিত ব্যায়াম করবেন
+- স্বাস্থ্যকর খাবার খাবেন
+- পর্যাপ্ত ঘুমাবেন`,
 			},
 			{
-				Title: "Obesity Advice",
-				Content: `- Calorie controlled diet
+				title: "Obesity Advice",
+				oldContent: `- Calorie controlled diet
 - Daily physical activity
 - Weight monitoring`,
+				content: `- পরিমিত ক্যালরির খাবার খাবেন
+- প্রতিদিন শারীরিক পরিশ্রম করবেন
+- নিয়মিত ওজন মাপবেন`,
 			},
-		}); err != nil {
+		}
+		adviceTemplates := []models.AdviceTemplate{}
+		for _, a := range adviceSeeds {
+			adviceTemplates = append(adviceTemplates, models.AdviceTemplate{Title: a.title, Content: a.content})
+		}
+		if err := seedIfEmpty(tx, adviceTemplates); err != nil {
 			return fmt.Errorf("failed to seed advice templates: %w", err)
 		}
+		// Switch the original English seeds to Bangla, but only while the doctor
+		// has not edited them; a changed template is left alone.
+		for _, a := range adviceSeeds {
+			if err := tx.Model(&models.AdviceTemplate{}).
+				Where("title = ? AND content = ?", a.title, a.oldContent).
+				Update("content", a.content).Error; err != nil {
+				return fmt.Errorf("failed to translate advice template %q: %w", a.title, err)
+			}
+		}
 
-		if err := seedIfEmpty(tx, []models.FollowupTemplate{
-			{Title: "2 Weeks", Value: "2 Weeks"},
-			{Title: "6 Weeks", Value: "6 Weeks"},
-			{Title: "3 Months", Value: "3 Months"},
-			{Title: "6 Months", Value: "6 Months"},
-			{Title: "12 Months", Value: "12 Months"},
-		}); err != nil {
+		// Follow-up is printed for the patient, so it is in Bangla
+		followupSeeds := []struct{ old, bn string }{
+			{"2 Weeks", "২ সপ্তাহ পর"},
+			{"6 Weeks", "৬ সপ্তাহ পর"},
+			{"3 Months", "৩ মাস পর"},
+			{"6 Months", "৬ মাস পর"},
+			{"12 Months", "১২ মাস পর"},
+		}
+		followupTemplates := []models.FollowupTemplate{}
+		for _, f := range followupSeeds {
+			followupTemplates = append(followupTemplates, models.FollowupTemplate{Title: f.bn, Value: f.bn})
+		}
+		if err := seedIfEmpty(tx, followupTemplates); err != nil {
 			return fmt.Errorf("failed to seed followup templates: %w", err)
+		}
+		// Switch the original English seeds to Bangla while the doctor has not edited them
+		for _, f := range followupSeeds {
+			if err := tx.Model(&models.FollowupTemplate{}).
+				Where("title = ? AND value = ?", f.old, f.old).
+				Updates(map[string]any{"title": f.bn, "value": f.bn}).Error; err != nil {
+				return fmt.Errorf("failed to translate followup template %q: %w", f.old, err)
+			}
 		}
 
 		// Clinical quick picks. Text ending in ":" is a prefix the doctor completes.
