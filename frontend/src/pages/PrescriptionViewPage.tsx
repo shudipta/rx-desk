@@ -9,6 +9,13 @@ import type { DoctorProfile } from '../types/doctor'
 
 const teal = '#006D77'
 const lightTeal = '#e8f4f4'
+// Bangla text: web font when online, then the system Bangla fonts of macOS / Windows
+const bnFont = "'Noto Sans Bengali', 'Kohinoor Bangla', 'Bangla Sangam MN', 'Nirmala UI', 'Vrinda', sans-serif"
+
+const MEAL_TIMING: Record<string, { en: string; bn: string }> = {
+  before: { en: 'Before meal', bn: 'খাবারের আগে' },
+  after: { en: 'After meal', bn: 'খাবারের পরে' },
+}
 
 const styles = {
   page: {
@@ -58,6 +65,27 @@ const styles = {
   },
   rightHeader: {
     textAlign: 'right' as const,
+    fontFamily: bnFont,
+  },
+  doctorNameBn: {
+    fontSize: 19,
+    fontWeight: 700,
+    color: teal,
+  },
+  bnLine: {
+    fontSize: 12.5,
+    color: '#444',
+    marginTop: 1,
+    whiteSpace: 'pre-line' as const,
+  },
+  bnStrong: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: '#1a1a2e',
+    marginTop: 4,
+  },
+  hospitalBlock: {
+    marginTop: 8,
   },
   hospital: {
     fontSize: 14,
@@ -121,9 +149,16 @@ const styles = {
     fontSize: 12.5,
     fontWeight: 700,
     color: teal,
-    marginBottom: 6,
+    marginBottom: 4,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.3,
+  },
+  sectionSub: {
+    fontWeight: 400,
+    color: '#888',
+    textTransform: 'none' as const,
+    letterSpacing: 0,
+    fontSize: 11,
   },
   rxTitle: {
     fontSize: 16,
@@ -257,6 +292,24 @@ function PrescriptionViewPage() {
     month: 'short',
     year: 'numeric',
   })
+  const dp = doctorProfile
+  const hasBangla = !!(
+    dp &&
+    (dp.doctor_name_bn || dp.qualification_bn || dp.specialization_bn || dp.hospital_name_bn ||
+      dp.clinic_name_bn || dp.address_bn || dp.visiting_schedule_bn || dp.appointment_contact_bn)
+  )
+  const listSection = (title: string, sub: string, items?: string[]) =>
+    items && items.length > 0 ? (
+      <div style={styles.section}>
+        <div style={styles.sectionTitle}>
+          {title}
+          {sub && <span style={styles.sectionSub}> · {sub}</span>}
+        </div>
+        {items.map((text, i) => (
+          <div key={i} style={styles.bullet}>• {text}</div>
+        ))}
+      </div>
+    ) : null
   const p = prescription.patient
   const gender = p?.gender
     ? p.gender.toLowerCase().startsWith('m') ? 'Male' : p.gender.toLowerCase().startsWith('f') ? 'Female' : p.gender
@@ -305,19 +358,39 @@ function PrescriptionViewPage() {
       <div style={styles.page} className="prescription-sheet">
         <div style={styles.headerSection}>
           <div style={styles.headerGrid}>
+            {/* Left: English */}
             <div>
-              <div style={styles.doctorName}>{doctorProfile?.doctor_name || "Dr. [Doctor's Name]"}</div>
-              {doctorProfile?.qualification && <div style={styles.qualification}>{doctorProfile.qualification}</div>}
-              <div style={styles.specialization}>{doctorProfile?.specialization || 'Senior Endocrinologist &amp; Diabetologist'}</div>
-              <div style={styles.regNo}>{doctorProfile?.registration_no ? `Reg No: ${doctorProfile.registration_no}` : ''}</div>
+              <div style={styles.doctorName}>{dp?.doctor_name || "Dr. [Doctor's Name]"}</div>
+              {dp?.qualification && <div style={styles.qualification}>{dp.qualification}</div>}
+              <div style={styles.specialization}>{dp?.specialization || 'Senior Endocrinologist & Diabetologist'}</div>
+              {dp?.registration_no && <div style={styles.regNo}>Reg No: {dp.registration_no}</div>}
+              <div style={styles.hospitalBlock}>
+                <div style={styles.hospital}>{dp?.hospital_name || 'RxDesk Hospital, OPD-1'}</div>
+                {dp?.clinic_name && <div style={styles.clinicName}>{dp.clinic_name}</div>}
+                {dp?.address && <div style={styles.address}>{dp.address}</div>}
+                {dp?.phone && <div style={styles.phone}>Phone: {dp.phone}</div>}
+                {dp?.visiting_schedule && <div style={styles.schedule}>Visiting: {dp.visiting_schedule}</div>}
+                {dp?.appointment_contact && <div style={styles.appointment}>Appointment: {dp.appointment_contact}</div>}
+              </div>
             </div>
-            <div style={styles.rightHeader}>
-              <div style={styles.hospital}>{doctorProfile?.hospital_name || 'RxDesk Hospital, OPD-1'}</div>
-              {doctorProfile?.address && <div style={styles.address}>{doctorProfile.address}</div>}
-              {doctorProfile?.phone && <div style={styles.phone}>Phone: {doctorProfile.phone}</div>}
-              {doctorProfile?.clinic_name && <div style={styles.clinicName}>{doctorProfile.clinic_name}</div>}
-              {doctorProfile?.visiting_schedule && <div style={styles.schedule}>Visiting: {doctorProfile.visiting_schedule}</div>}
-              {doctorProfile?.appointment_contact && <div style={styles.appointment}>Appointment: {doctorProfile.appointment_contact}</div>}
+
+            {/* Right: Bangla */}
+            <div style={styles.rightHeader} lang="bn">
+              {dp?.doctor_name_bn && <div style={styles.doctorNameBn}>{dp.doctor_name_bn}</div>}
+              {dp?.qualification_bn && <div style={styles.bnLine}>{dp.qualification_bn}</div>}
+              {dp?.specialization_bn && <div style={styles.bnStrong}>{dp.specialization_bn}</div>}
+              <div style={styles.hospitalBlock}>
+                {dp?.hospital_name_bn && <div style={styles.bnStrong}>{dp.hospital_name_bn}</div>}
+                {dp?.clinic_name_bn && <div style={styles.bnLine}>{dp.clinic_name_bn}</div>}
+                {dp?.address_bn && <div style={styles.bnLine}>{dp.address_bn}</div>}
+                {dp?.visiting_schedule_bn && <div style={styles.bnLine}>সাক্ষাতের সময়: {dp.visiting_schedule_bn}</div>}
+                {dp?.appointment_contact_bn && <div style={styles.bnLine}>সিরিয়ালের জন্য: {dp.appointment_contact_bn}</div>}
+              </div>
+              {!hasBangla && (
+                <div className="no-print" style={{ fontFamily: 'inherit', fontSize: 12, color: '#9ca3af' }}>
+                  Add the Bangla header in Settings → Doctor Profile
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -342,23 +415,11 @@ function PrescriptionViewPage() {
 
           <div style={styles.bodyGrid}>
             <div style={styles.leftCol}>
-              {prescription.diagnoses?.length > 0 && (
-                <div style={styles.section}>
-                  <div style={styles.sectionTitle}>CLINICAL FINDINGS / DIAGNOSES</div>
-                  {prescription.diagnoses.map((d) => (
-                    <div key={d.id} style={styles.bullet}>• {d.diagnosis_text}</div>
-                  ))}
-                </div>
-              )}
-
-              {prescription.tests?.length > 0 && (
-                <div style={styles.section}>
-                  <div style={styles.sectionTitle}>REQUIRED INVESTIGATIONS</div>
-                  {prescription.tests.map((t) => (
-                    <div key={t.id} style={styles.bullet}>• {t.test_name}</div>
-                  ))}
-                </div>
-              )}
+              {listSection('C/C', 'Chief complaints', prescription.complaints?.map((x) => x.complaint_text))}
+              {listSection('P/H', 'Past history', prescription.histories?.map((x) => x.history_text))}
+              {listSection('O/E', 'On examination', prescription.examinations?.map((x) => x.examination_text))}
+              {listSection('Diagnosis', '', prescription.diagnoses?.map((x) => x.diagnosis_text))}
+              {listSection('Investigations', '', prescription.tests?.map((x) => x.test_name))}
             </div>
 
             <div style={styles.rightCol}>
@@ -380,7 +441,15 @@ function PrescriptionViewPage() {
                           <td style={{ ...styles.medicineTd, fontWeight: 600 }}>{m.medicine_name}</td>
                           <td style={styles.medicineTd}>{m.dosage}</td>
                           <td style={styles.medicineTd}>{m.duration}</td>
-                          <td style={styles.medicineTd}>{m.instructions}</td>
+                          <td style={styles.medicineTd}>
+                            {MEAL_TIMING[m.meal_timing] && (
+                              <div>
+                                <span style={{ fontFamily: bnFont, fontWeight: 600 }}>{MEAL_TIMING[m.meal_timing].bn}</span>{' '}
+                                <span style={{ color: '#666', fontSize: 11 }}>({MEAL_TIMING[m.meal_timing].en})</span>
+                              </div>
+                            )}
+                            {m.instructions && <div>{m.instructions}</div>}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
