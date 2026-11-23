@@ -17,16 +17,19 @@ type Patient struct {
 // Prescription represents a complete patient prescription
 type Prescription struct {
 	gorm.Model
-	PatientID uint                   `json:"patient_id" gorm:"not null;index"`
-	Patient   *Patient               `json:"patient,omitempty" gorm:"foreignKey:PatientID"`
-	Title     string                 `json:"title" gorm:"not null"` // e.g. "Diabetes Follow-up", "Initial Consultation"
-	VisitType string                 `json:"visit_type" gorm:"not null"`
-	Followup  string                 `json:"followup"`
-	Notes     string                 `json:"notes"`
-	Medicines []PrescriptionMedicine `json:"medicines,omitempty" gorm:"foreignKey:PrescriptionID;constraint:OnDelete:CASCADE;"`
-	Tests     []PrescriptionTest     `json:"tests,omitempty" gorm:"foreignKey:PrescriptionID;constraint:OnDelete:CASCADE;"`
-	Advices   []PrescriptionAdvice   `json:"advices,omitempty" gorm:"foreignKey:PrescriptionID;constraint:OnDelete:CASCADE;"`
-	Diagnoses []PrescriptionDiagnosis `json:"diagnoses,omitempty" gorm:"foreignKey:PrescriptionID;constraint:OnDelete:CASCADE;"`
+	PatientID    uint                      `json:"patient_id" gorm:"not null;index"`
+	Patient      *Patient                  `json:"patient,omitempty" gorm:"foreignKey:PatientID"`
+	Title        string                    `json:"title" gorm:"not null"` // e.g. "Diabetes Follow-up", "Initial Consultation"
+	VisitType    string                    `json:"visit_type" gorm:"not null"`
+	Followup     string                    `json:"followup"`
+	Notes        string                    `json:"notes"`
+	Medicines    []PrescriptionMedicine    `json:"medicines,omitempty" gorm:"foreignKey:PrescriptionID;constraint:OnDelete:CASCADE;"`
+	Tests        []PrescriptionTest        `json:"tests,omitempty" gorm:"foreignKey:PrescriptionID;constraint:OnDelete:CASCADE;"`
+	Advices      []PrescriptionAdvice      `json:"advices,omitempty" gorm:"foreignKey:PrescriptionID;constraint:OnDelete:CASCADE;"`
+	Diagnoses    []PrescriptionDiagnosis   `json:"diagnoses,omitempty" gorm:"foreignKey:PrescriptionID;constraint:OnDelete:CASCADE;"`
+	Complaints   []PrescriptionComplaint   `json:"complaints,omitempty" gorm:"foreignKey:PrescriptionID;constraint:OnDelete:CASCADE;"`
+	Histories    []PrescriptionHistory     `json:"histories,omitempty" gorm:"foreignKey:PrescriptionID;constraint:OnDelete:CASCADE;"`
+	Examinations []PrescriptionExamination `json:"examinations,omitempty" gorm:"foreignKey:PrescriptionID;constraint:OnDelete:CASCADE;"`
 }
 
 // PrescriptionMedicine represents a single medicine prescribed in a prescription
@@ -37,6 +40,7 @@ type PrescriptionMedicine struct {
 	Dosage         string `json:"dosage"`
 	Duration       string `json:"duration"`
 	Instructions   string `json:"instructions"`
+	MealTiming     string `json:"meal_timing"` // "before", "after" or "" (not specified)
 }
 
 // PrescriptionTest represents a single diagnostic test ordered in a prescription
@@ -58,6 +62,45 @@ type PrescriptionDiagnosis struct {
 	gorm.Model
 	PrescriptionID uint   `json:"prescription_id" gorm:"not null;index"`
 	DiagnosisText  string `json:"diagnosis_text" gorm:"not null"`
+}
+
+// PrescriptionComplaint is a chief complaint (C/C): what the patient reports
+type PrescriptionComplaint struct {
+	gorm.Model
+	PrescriptionID uint   `json:"prescription_id" gorm:"not null;index"`
+	ComplaintText  string `json:"complaint_text" gorm:"not null"`
+}
+
+// PrescriptionHistory is a past-history (P/H) entry: earlier illnesses, surgery, etc.
+type PrescriptionHistory struct {
+	gorm.Model
+	PrescriptionID uint   `json:"prescription_id" gorm:"not null;index"`
+	HistoryText    string `json:"history_text" gorm:"not null"`
+}
+
+// PrescriptionExamination is an on-examination (O/E) finding: what the doctor
+// observes or measures (BP, pulse, weight, thyroid, ...)
+type PrescriptionExamination struct {
+	gorm.Model
+	PrescriptionID  uint   `json:"prescription_id" gorm:"not null;index"`
+	ExaminationText string `json:"examination_text" gorm:"not null"`
+}
+
+// Clinical template sections
+const (
+	SectionComplaint   = "cc"
+	SectionHistory     = "ph"
+	SectionExamination = "oe"
+	SectionDiagnosis   = "dx"
+)
+
+// ClinicalTemplate is a one-click quick pick for the C/C, P/H, O/E and
+// diagnosis sections. Text ending in ":" (e.g. "BP:") is a prefix the doctor
+// completes with a value.
+type ClinicalTemplate struct {
+	gorm.Model
+	Section string `json:"section" gorm:"not null;index"`
+	Text    string `json:"text" gorm:"not null"`
 }
 
 // FavoriteMedicine represents a doctor's frequently used medicine list

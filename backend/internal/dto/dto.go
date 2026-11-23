@@ -15,17 +15,41 @@ type PatientDTO struct {
 }
 
 type PrescriptionDTO struct {
-	ID        uint                       `json:"id"`
-	Title     string                     `json:"title"`
-	VisitType string                     `json:"visit_type"`
-	Followup  string                     `json:"followup"`
-	Notes     string                     `json:"notes"`
-	CreatedAt time.Time                  `json:"created_at"`
-	Patient   *PatientDTO                `json:"patient,omitempty"`
-	Medicines []PrescriptionMedicineDTO  `json:"medicines,omitempty"`
-	Tests     []PrescriptionTestDTO      `json:"tests,omitempty"`
-	Advices   []PrescriptionAdviceDTO    `json:"advices,omitempty"`
-	Diagnoses []PrescriptionDiagnosisDTO `json:"diagnoses,omitempty"`
+	ID           uint                         `json:"id"`
+	Title        string                       `json:"title"`
+	VisitType    string                       `json:"visit_type"`
+	Followup     string                       `json:"followup"`
+	Notes        string                       `json:"notes"`
+	CreatedAt    time.Time                    `json:"created_at"`
+	Patient      *PatientDTO                  `json:"patient,omitempty"`
+	Medicines    []PrescriptionMedicineDTO    `json:"medicines,omitempty"`
+	Tests        []PrescriptionTestDTO        `json:"tests,omitempty"`
+	Advices      []PrescriptionAdviceDTO      `json:"advices,omitempty"`
+	Diagnoses    []PrescriptionDiagnosisDTO   `json:"diagnoses,omitempty"`
+	Complaints   []PrescriptionComplaintDTO   `json:"complaints"`
+	Histories    []PrescriptionHistoryDTO     `json:"histories"`
+	Examinations []PrescriptionExaminationDTO `json:"examinations"`
+}
+
+type PrescriptionComplaintDTO struct {
+	ID            uint   `json:"id"`
+	ComplaintText string `json:"complaint_text"`
+}
+
+type PrescriptionHistoryDTO struct {
+	ID          uint   `json:"id"`
+	HistoryText string `json:"history_text"`
+}
+
+type PrescriptionExaminationDTO struct {
+	ID              uint   `json:"id"`
+	ExaminationText string `json:"examination_text"`
+}
+
+type ClinicalTemplateDTO struct {
+	ID      uint   `json:"id"`
+	Section string `json:"section"`
+	Text    string `json:"text"`
 }
 
 type PrescriptionMedicineDTO struct {
@@ -34,6 +58,7 @@ type PrescriptionMedicineDTO struct {
 	Dosage       string `json:"dosage"`
 	Duration     string `json:"duration"`
 	Instructions string `json:"instructions"`
+	MealTiming   string `json:"meal_timing"`
 }
 
 type PrescriptionTestDTO struct {
@@ -119,6 +144,7 @@ func MapPrescription(p models.Prescription) PrescriptionDTO {
 				Dosage:       m.Dosage,
 				Duration:     m.Duration,
 				Instructions: m.Instructions,
+				MealTiming:   m.MealTiming,
 			}
 		}
 	} else {
@@ -176,7 +202,49 @@ func MapPrescription(p models.Prescription) PrescriptionDTO {
 		Tests:     testDTOs,
 		Advices:   adviceDTOs,
 		Diagnoses: diagnosisDTOs,
+		Complaints: mapItems(p.Complaints, func(x models.PrescriptionComplaint) PrescriptionComplaintDTO {
+			return PrescriptionComplaintDTO{ID: x.ID, ComplaintText: x.ComplaintText}
+		}),
+		Histories: mapItems(p.Histories, func(x models.PrescriptionHistory) PrescriptionHistoryDTO {
+			return PrescriptionHistoryDTO{ID: x.ID, HistoryText: x.HistoryText}
+		}),
+		Examinations: mapItems(p.Examinations, func(x models.PrescriptionExamination) PrescriptionExaminationDTO {
+			return PrescriptionExaminationDTO{ID: x.ID, ExaminationText: x.ExaminationText}
+		}),
 	}
+}
+
+// mapItems maps a slice, always returning a non-nil slice so JSON gets [] not null
+func mapItems[T, D any](items []T, f func(T) D) []D {
+	out := make([]D, len(items))
+	for i, x := range items {
+		out[i] = f(x)
+	}
+	return out
+}
+
+func MapFavoriteMedicine(x models.FavoriteMedicine) FavoriteMedicineDTO {
+	return FavoriteMedicineDTO{ID: x.ID, Name: x.Name}
+}
+
+func MapFavoriteTest(x models.FavoriteTest) FavoriteTestDTO {
+	return FavoriteTestDTO{ID: x.ID, Name: x.Name}
+}
+
+func MapAdviceTemplate(x models.AdviceTemplate) AdviceTemplateDTO {
+	return AdviceTemplateDTO{ID: x.ID, Title: x.Title, Content: x.Content}
+}
+
+func MapFollowupTemplate(x models.FollowupTemplate) FollowupTemplateDTO {
+	return FollowupTemplateDTO{ID: x.ID, Title: x.Title, Value: x.Value}
+}
+
+func MapClinicalTemplate(x models.ClinicalTemplate) ClinicalTemplateDTO {
+	return ClinicalTemplateDTO{ID: x.ID, Section: x.Section, Text: x.Text}
+}
+
+func MapClinicalTemplates(items []models.ClinicalTemplate) []ClinicalTemplateDTO {
+	return mapItems(items, MapClinicalTemplate)
 }
 
 // MapPatientPrescription maps a single models.Prescription to PatientPrescriptionDTO
@@ -279,20 +347,4 @@ func MapDoctorProfile(p models.DoctorProfile) DoctorProfileDTO {
 		VisitingSchedule:   p.VisitingSchedule,
 		AppointmentContact: p.AppointmentContact,
 	}
-}
-
-func MapFavoriteMedicine(x models.FavoriteMedicine) FavoriteMedicineDTO {
-	return FavoriteMedicineDTO{ID: x.ID, Name: x.Name}
-}
-
-func MapFavoriteTest(x models.FavoriteTest) FavoriteTestDTO {
-	return FavoriteTestDTO{ID: x.ID, Name: x.Name}
-}
-
-func MapAdviceTemplate(x models.AdviceTemplate) AdviceTemplateDTO {
-	return AdviceTemplateDTO{ID: x.ID, Title: x.Title, Content: x.Content}
-}
-
-func MapFollowupTemplate(x models.FollowupTemplate) FollowupTemplateDTO {
-	return FollowupTemplateDTO{ID: x.ID, Title: x.Title, Value: x.Value}
 }

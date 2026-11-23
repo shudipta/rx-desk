@@ -94,6 +94,35 @@ func Seed(db *gorm.DB) error {
 			return fmt.Errorf("failed to seed followup templates: %w", err)
 		}
 
+		// Clinical quick picks. Text ending in ":" is a prefix the doctor completes.
+		clinical := []models.ClinicalTemplate{}
+		add := func(section string, texts ...string) {
+			for _, t := range texts {
+				clinical = append(clinical, models.ClinicalTemplate{Section: section, Text: t})
+			}
+		}
+		add(models.SectionComplaint,
+			"Polyuria", "Polydipsia", "Weight loss", "Weight gain", "Fatigue",
+			"Neck swelling", "Palpitation", "Heat intolerance", "Cold intolerance",
+			"Irregular menstruation", "Excess facial hair", "Tingling of hands & feet",
+		)
+		add(models.SectionHistory,
+			"Known case of T2DM", "Hypertension", "Hypothyroidism", "IHD", "CKD",
+			"Bronchial asthma", "Thyroid surgery", "No significant past illness",
+		)
+		add(models.SectionExamination,
+			"BP:", "Pulse:", "Weight (kg):", "Height (cm):", "BMI:",
+			"Thyroid:", "Acanthosis nigricans", "Anaemia: absent", "Oedema: absent",
+		)
+		add(models.SectionDiagnosis,
+			"Type 2 Diabetes Mellitus", "Prediabetes", "Hypothyroidism",
+			"Hyperthyroidism (Graves' disease)", "PCOS", "Obesity", "Dyslipidaemia",
+			"Hypertension", "Hyperprolactinaemia", "Vitamin D deficiency",
+		)
+		if err := seedIfEmpty(tx, clinical); err != nil {
+			return fmt.Errorf("failed to seed clinical templates: %w", err)
+		}
+
 		// Doctor Profile (single row, id=1)
 		defaultProfile := models.DoctorProfile{
 			Model:              gorm.Model{ID: 1},

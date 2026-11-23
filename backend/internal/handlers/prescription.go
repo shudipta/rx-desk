@@ -12,15 +12,33 @@ import (
 
 // CreatePrescriptionInput defines the validation structure for creating a prescription
 type CreatePrescriptionInput struct {
-	PatientID uint                    `json:"patient_id" binding:"required"`
-	Title     string                  `json:"title" binding:"required"`
-	VisitType string                  `json:"visit_type" binding:"required"`
-	Followup  string                  `json:"followup"`
-	Notes     string                  `json:"notes"`
-	Diagnoses []CreateDiagnosisInput  `json:"diagnoses"`
-	Medicines []CreateMedicineInput   `json:"medicines"`
-	Tests     []CreateTestInput       `json:"tests"`
-	Advices   []CreateAdviceInput     `json:"advices"`
+	PatientID    uint                     `json:"patient_id" binding:"required"`
+	Title        string                   `json:"title" binding:"required"`
+	VisitType    string                   `json:"visit_type" binding:"required"`
+	Followup     string                   `json:"followup"`
+	Notes        string                   `json:"notes"`
+	Complaints   []CreateComplaintInput   `json:"complaints" binding:"dive"`
+	Histories    []CreateHistoryInput     `json:"histories" binding:"dive"`
+	Examinations []CreateExaminationInput `json:"examinations" binding:"dive"`
+	Diagnoses    []CreateDiagnosisInput   `json:"diagnoses" binding:"dive"`
+	Medicines    []CreateMedicineInput    `json:"medicines" binding:"dive"`
+	Tests        []CreateTestInput        `json:"tests" binding:"dive"`
+	Advices      []CreateAdviceInput      `json:"advices" binding:"dive"`
+}
+
+// CreateComplaintInput defines nested input for chief complaints (C/C)
+type CreateComplaintInput struct {
+	ComplaintText string `json:"complaint_text" binding:"required"`
+}
+
+// CreateHistoryInput defines nested input for past history (P/H)
+type CreateHistoryInput struct {
+	HistoryText string `json:"history_text" binding:"required"`
+}
+
+// CreateExaminationInput defines nested input for on-examination findings (O/E)
+type CreateExaminationInput struct {
+	ExaminationText string `json:"examination_text" binding:"required"`
 }
 
 // CreateDiagnosisInput defines nested input for prescription diagnoses
@@ -34,6 +52,7 @@ type CreateMedicineInput struct {
 	Dosage       string `json:"dosage"`
 	Duration     string `json:"duration"`
 	Instructions string `json:"instructions"`
+	MealTiming   string `json:"meal_timing" binding:"omitempty,oneof=before after"`
 }
 
 // CreateTestInput defines nested input for prescription tests
@@ -46,6 +65,72 @@ type CreateAdviceInput struct {
 	AdviceText string `json:"advice_text" binding:"required"`
 }
 
+// itemModels lists every per-prescription item table, for deleting on update
+var itemModels = []any{
+	&models.PrescriptionComplaint{},
+	&models.PrescriptionHistory{},
+	&models.PrescriptionExamination{},
+	&models.PrescriptionDiagnosis{},
+	&models.PrescriptionMedicine{},
+	&models.PrescriptionTest{},
+	&models.PrescriptionAdvice{},
+}
+
+// saveItems inserts all nested items of a prescription, keeping input order
+func saveItems(tx *gorm.DB, rxID uint, in CreatePrescriptionInput) error {
+	var rows []any
+	for _, x := range in.Complaints {
+		rows = append(rows, &models.PrescriptionComplaint{PrescriptionID: rxID, ComplaintText: x.ComplaintText})
+	}
+	for _, x := range in.Histories {
+		rows = append(rows, &models.PrescriptionHistory{PrescriptionID: rxID, HistoryText: x.HistoryText})
+	}
+	for _, x := range in.Examinations {
+		rows = append(rows, &models.PrescriptionExamination{PrescriptionID: rxID, ExaminationText: x.ExaminationText})
+	}
+	for _, x := range in.Diagnoses {
+		rows = append(rows, &models.PrescriptionDiagnosis{PrescriptionID: rxID, DiagnosisText: x.DiagnosisText})
+	}
+	for _, x := range in.Medicines {
+		rows = append(rows, &models.PrescriptionMedicine{
+			PrescriptionID: rxID,
+			MedicineName:   x.MedicineName,
+			Dosage:         x.Dosage,
+			Duration:       x.Duration,
+			Instructions:   x.Instructions,
+			MealTiming:     x.MealTiming,
+		})
+	}
+	for _, x := range in.Tests {
+		rows = append(rows, &models.PrescriptionTest{PrescriptionID: rxID, TestName: x.TestName})
+	}
+	for _, x := range in.Advices {
+		rows = append(rows, &models.PrescriptionAdvice{PrescriptionID: rxID, AdviceText: x.AdviceText})
+	}
+	for _, row := range rows {
+		if err := tx.Create(row).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// loadPrescription fetches a prescription with its patient and every nested item
+func loadPrescription(id any) (models.Prescription, error) {
+	var rx models.Prescription
+	err := database.DB.
+		Preload("Patient").
+		Preload("Complaints").
+		Preload("Histories").
+		Preload("Examinations").
+		Preload("Diagnoses").
+		Preload("Medicines").
+		Preload("Tests").
+		Preload("Advices").
+		First(&rx, id).Error
+	return rx, err
+}
+
 // CreatePrescription creates a new prescription with all its nested items in a transaction
 func CreatePrescription(c *gin.Context) {
 	var input CreatePrescriptionInput
@@ -54,14 +139,12 @@ func CreatePrescription(c *gin.Context) {
 		return
 	}
 
-	// Verify patient exists
 	var patient models.Patient
 	if err := database.DB.First(&patient, input.PatientID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Patient not found"})
 		return
 	}
 
-	// Construct Prescription object
 	prescription := models.Prescription{
 		PatientID: input.PatientID,
 		Title:     input.Title,
@@ -70,78 +153,26 @@ func CreatePrescription(c *gin.Context) {
 		Notes:     input.Notes,
 	}
 
-	// Execute inside a database transaction to ensure atomicity
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
-		// Save root prescription
 		if err := tx.Create(&prescription).Error; err != nil {
 			return err
 		}
-
-		// Save diagnoses
-		for _, d := range input.Diagnoses {
-			diag := models.PrescriptionDiagnosis{
-				PrescriptionID: prescription.ID,
-				DiagnosisText:  d.DiagnosisText,
-			}
-			if err := tx.Create(&diag).Error; err != nil {
-				return err
-			}
-		}
-
-		// Save medicines
-		for _, m := range input.Medicines {
-			medicine := models.PrescriptionMedicine{
-				PrescriptionID: prescription.ID,
-				MedicineName:   m.MedicineName,
-				Dosage:         m.Dosage,
-				Duration:       m.Duration,
-				Instructions:   m.Instructions,
-			}
-			if err := tx.Create(&medicine).Error; err != nil {
-				return err
-			}
-		}
-
-		// Save tests
-		for _, t := range input.Tests {
-			test := models.PrescriptionTest{
-				PrescriptionID: prescription.ID,
-				TestName:       t.TestName,
-			}
-			if err := tx.Create(&test).Error; err != nil {
-				return err
-			}
-		}
-
-		// Save advices
-		for _, a := range input.Advices {
-			advice := models.PrescriptionAdvice{
-				PrescriptionID: prescription.ID,
-				AdviceText:     a.AdviceText,
-			}
-			if err := tx.Create(&advice).Error; err != nil {
-				return err
-			}
-		}
-
-		return nil
+		return saveItems(tx, prescription.ID, input)
 	})
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create prescription: " + err.Error()})
 		return
 	}
 
-	// Preload nested models to return the full payload
-	if err := database.DB.Preload("Medicines").Preload("Tests").Preload("Advices").Preload("Diagnoses").First(&prescription, prescription.ID).Error; err != nil {
+	created, err := loadPrescription(prescription.ID)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load created prescription"})
 		return
 	}
-
-	c.JSON(http.StatusCreated, dto.MapPrescription(prescription))
+	c.JSON(http.StatusCreated, dto.MapPrescription(created))
 }
 
-// UpdatePrescription updates an existing prescription with all its nested items in a transaction
+// UpdatePrescription replaces an existing prescription and all its nested items in a transaction
 func UpdatePrescription(c *gin.Context) {
 	id := c.Param("id")
 
@@ -158,9 +189,8 @@ func UpdatePrescription(c *gin.Context) {
 	}
 
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
-		// Update root fields
 		// A map (not a struct) so that cleared follow-up/notes are saved as empty
-		if err := tx.Model(&prescription).Updates(map[string]interface{}{
+		if err := tx.Model(&prescription).Updates(map[string]any{
 			"title":      input.Title,
 			"visit_type": input.VisitType,
 			"followup":   input.Followup,
@@ -168,85 +198,30 @@ func UpdatePrescription(c *gin.Context) {
 		}).Error; err != nil {
 			return err
 		}
-
-		// Delete old nested items
-		if err := tx.Where("prescription_id = ?", prescription.ID).Delete(&models.PrescriptionDiagnosis{}).Error; err != nil {
-			return err
-		}
-		if err := tx.Where("prescription_id = ?", prescription.ID).Delete(&models.PrescriptionMedicine{}).Error; err != nil {
-			return err
-		}
-		if err := tx.Where("prescription_id = ?", prescription.ID).Delete(&models.PrescriptionTest{}).Error; err != nil {
-			return err
-		}
-		if err := tx.Where("prescription_id = ?", prescription.ID).Delete(&models.PrescriptionAdvice{}).Error; err != nil {
-			return err
-		}
-
-		// Recreate diagnoses
-		for _, d := range input.Diagnoses {
-			if err := tx.Create(&models.PrescriptionDiagnosis{
-				PrescriptionID: prescription.ID,
-				DiagnosisText:  d.DiagnosisText,
-			}).Error; err != nil {
+		for _, m := range itemModels {
+			if err := tx.Where("prescription_id = ?", prescription.ID).Delete(m).Error; err != nil {
 				return err
 			}
 		}
-
-		// Recreate medicines
-		for _, m := range input.Medicines {
-			if err := tx.Create(&models.PrescriptionMedicine{
-				PrescriptionID: prescription.ID,
-				MedicineName:   m.MedicineName,
-				Dosage:         m.Dosage,
-				Duration:       m.Duration,
-				Instructions:   m.Instructions,
-			}).Error; err != nil {
-				return err
-			}
-		}
-
-		// Recreate tests
-		for _, t := range input.Tests {
-			if err := tx.Create(&models.PrescriptionTest{
-				PrescriptionID: prescription.ID,
-				TestName:       t.TestName,
-			}).Error; err != nil {
-				return err
-			}
-		}
-
-		// Recreate advices
-		for _, a := range input.Advices {
-			if err := tx.Create(&models.PrescriptionAdvice{
-				PrescriptionID: prescription.ID,
-				AdviceText:     a.AdviceText,
-			}).Error; err != nil {
-				return err
-			}
-		}
-
-		return nil
+		return saveItems(tx, prescription.ID, input)
 	})
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update prescription: " + err.Error()})
 		return
 	}
 
-	if err := database.DB.Preload("Medicines").Preload("Tests").Preload("Advices").Preload("Diagnoses").Preload("Patient").First(&prescription, prescription.ID).Error; err != nil {
+	updated, err := loadPrescription(prescription.ID)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load updated prescription"})
 		return
 	}
-
-	c.JSON(http.StatusOK, dto.MapPrescription(prescription))
+	c.JSON(http.StatusOK, dto.MapPrescription(updated))
 }
 
-// GetPrescription retrieves a single prescription by ID preloading Patient, Medicines, Tests, Advices, and Diagnoses
+// GetPrescription retrieves a single prescription with its patient and all nested items
 func GetPrescription(c *gin.Context) {
-	id := c.Param("id")
-	var prescription models.Prescription
-	if err := database.DB.Preload("Patient").Preload("Medicines").Preload("Tests").Preload("Advices").Preload("Diagnoses").First(&prescription, id).Error; err != nil {
+	prescription, err := loadPrescription(c.Param("id"))
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Prescription not found"})
 		return
 	}
@@ -257,7 +232,6 @@ func GetPrescription(c *gin.Context) {
 func GetPatientPrescriptions(c *gin.Context) {
 	patientID := c.Param("id")
 
-	// Verify patient exists
 	var patient models.Patient
 	if err := database.DB.First(&patient, patientID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Patient not found"})
@@ -270,7 +244,6 @@ func GetPatientPrescriptions(c *gin.Context) {
 		Where("patient_id = ?", patientID).
 		Order("created_at DESC").
 		Find(&prescriptions).Error
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch prescriptions: " + err.Error()})
 		return

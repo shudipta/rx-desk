@@ -68,5 +68,10 @@ func SetupRouter() *gin.Engine {
 	r.PUT("/followup-templates/:id", handlers.UpdateFollowupTemplate)
 	r.DELETE("/followup-templates/:id", handlers.DeleteFollowupTemplate)
 
+	r.GET("/clinical-templates", handlers.ListClinicalTemplates)
+	r.POST("/clinical-templates", handlers.CreateClinicalTemplate)
+	r.PUT("/clinical-templates/:id", handlers.UpdateClinicalTemplate)
+	r.DELETE("/clinical-templates/:id", handlers.DeleteClinicalTemplate)
+
 	return r
 }
