@@ -340,6 +340,8 @@ type DoctorProfileDTO struct {
 	AddressBn            string `json:"address_bn"`
 	VisitingScheduleBn   string `json:"visiting_schedule_bn"`
 	AppointmentContactBn string `json:"appointment_contact_bn"`
+
+	PrintHeaderFooter bool `json:"print_header_footer"`
 }
 
 func MapDoctorProfile(p models.DoctorProfile) DoctorProfileDTO {
@@ -366,5 +368,7 @@ func MapDoctorProfile(p models.DoctorProfile) DoctorProfileDTO {
 		AddressBn:            p.AddressBn,
 		VisitingScheduleBn:   p.VisitingScheduleBn,
 		AppointmentContactBn: p.AppointmentContactBn,
+
+		PrintHeaderFooter: p.PrintHeaderFooter,
 	}
 }

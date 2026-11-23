@@ -154,4 +154,8 @@ type DoctorProfile struct {
 	AddressBn            string `json:"address_bn"`
 	VisitingScheduleBn   string `json:"visiting_schedule_bn"`
 	AppointmentContactBn string `json:"appointment_contact_bn"`
+
+	// Default of the "Print header & footer" switch on the prescription page.
+	// Off: the hospital pad already has them printed, so they are left blank.
+	PrintHeaderFooter bool `json:"print_header_footer" gorm:"not null;default:false"`
 }

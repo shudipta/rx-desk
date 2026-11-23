@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Form, Input, Button, Spin, Result, message, Modal, Space, Typography, Divider } from 'antd'
+import { Card, Form, Input, Button, Spin, Result, message, Modal, Space, Typography, Divider, Switch } from 'antd'
 import {
   SaveOutlined, PlusOutlined, EditOutlined, DeleteOutlined, MedicineBoxOutlined, ExperimentOutlined, MessageOutlined,
   CalendarOutlined, CommentOutlined, HistoryOutlined, DashboardOutlined, FileTextOutlined,
@@ -337,6 +337,18 @@ function SettingsPage() {
           </Form.Item>
           <Form.Item label="সিরিয়ালের জন্য (Appointment contact)" name="appointment_contact_bn">
             <Input style={bnInput} />
+          </Form.Item>
+
+          <Divider orientation="left" plain style={{ fontWeight: 600, color: '#006D77' }}>
+            Printing
+          </Divider>
+          <Form.Item
+            label="Print header & footer by default"
+            name="print_header_footer"
+            valuePropName="checked"
+            extra="Off: for the hospital's pre-printed A4 pad. The doctor info (top 30%) and visiting schedule (bottom 12.5%) are left blank on paper. You can still flip it for one prescription on the print page."
+          >
+            <Switch />
           </Form.Item>
         </Form>
       </Card>

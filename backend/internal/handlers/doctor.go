@@ -31,6 +31,8 @@ type DoctorProfileInput struct {
 	AddressBn            string `json:"address_bn"`
 	VisitingScheduleBn   string `json:"visiting_schedule_bn"`
 	AppointmentContactBn string `json:"appointment_contact_bn"`
+
+	PrintHeaderFooter bool `json:"print_header_footer"`
 }
 
 func GetDoctorProfile(c *gin.Context) {
@@ -75,6 +77,7 @@ func UpdateDoctorProfile(c *gin.Context) {
 	profile.AddressBn = input.AddressBn
 	profile.VisitingScheduleBn = input.VisitingScheduleBn
 	profile.AppointmentContactBn = input.AppointmentContactBn
+	profile.PrintHeaderFooter = input.PrintHeaderFooter
 
 	// Save inserts when ID has no row yet and updates otherwise
 	if err := database.DB.Save(&profile).Error; err != nil {

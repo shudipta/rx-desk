@@ -21,4 +21,6 @@ export interface DoctorProfile {
   address_bn: string
   visiting_schedule_bn: string
   appointment_contact_bn: string
+  /** Default of the "Print header & footer" switch on the prescription page */
+  print_header_footer: boolean
 }
