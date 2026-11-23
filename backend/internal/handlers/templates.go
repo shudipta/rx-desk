@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/shudipta/rx-desk/backend/internal/database"
+	"github.com/shudipta/rx-desk/backend/internal/dto"
 	"github.com/shudipta/rx-desk/backend/internal/models"
 )
 
@@ -17,11 +18,13 @@ func ListFavoriteMedicines(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch favorite medicines"})
 		return
 	}
-	c.JSON(http.StatusOK, items)
+	c.JSON(http.StatusOK, dto.MapFavoriteMedicines(items))
 }
 
 func CreateFavoriteMedicine(c *gin.Context) {
-	var input struct{ Name string `json:"name" binding:"required"` }
+	var input struct {
+		Name string `json:"name" binding:"required"`
+	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -31,7 +34,7 @@ func CreateFavoriteMedicine(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create favorite medicine"})
 		return
 	}
-	c.JSON(http.StatusCreated, item)
+	c.JSON(http.StatusCreated, dto.MapFavoriteMedicine(item))
 }
 
 func UpdateFavoriteMedicine(c *gin.Context) {
@@ -41,7 +44,9 @@ func UpdateFavoriteMedicine(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Favorite medicine not found"})
 		return
 	}
-	var input struct{ Name string `json:"name" binding:"required"` }
+	var input struct {
+		Name string `json:"name" binding:"required"`
+	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -51,7 +56,7 @@ func UpdateFavoriteMedicine(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update favorite medicine"})
 		return
 	}
-	c.JSON(http.StatusOK, item)
+	c.JSON(http.StatusOK, dto.MapFavoriteMedicine(item))
 }
 
 func DeleteFavoriteMedicine(c *gin.Context) {
@@ -71,11 +76,13 @@ func ListFavoriteTests(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch favorite tests"})
 		return
 	}
-	c.JSON(http.StatusOK, items)
+	c.JSON(http.StatusOK, dto.MapFavoriteTests(items))
 }
 
 func CreateFavoriteTest(c *gin.Context) {
-	var input struct{ Name string `json:"name" binding:"required"` }
+	var input struct {
+		Name string `json:"name" binding:"required"`
+	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -85,7 +92,7 @@ func CreateFavoriteTest(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create favorite test"})
 		return
 	}
-	c.JSON(http.StatusCreated, item)
+	c.JSON(http.StatusCreated, dto.MapFavoriteTest(item))
 }
 
 func UpdateFavoriteTest(c *gin.Context) {
@@ -95,7 +102,9 @@ func UpdateFavoriteTest(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Favorite test not found"})
 		return
 	}
-	var input struct{ Name string `json:"name" binding:"required"` }
+	var input struct {
+		Name string `json:"name" binding:"required"`
+	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -105,7 +114,7 @@ func UpdateFavoriteTest(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update favorite test"})
 		return
 	}
-	c.JSON(http.StatusOK, item)
+	c.JSON(http.StatusOK, dto.MapFavoriteTest(item))
 }
 
 func DeleteFavoriteTest(c *gin.Context) {
@@ -125,7 +134,7 @@ func ListAdviceTemplates(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch advice templates"})
 		return
 	}
-	c.JSON(http.StatusOK, items)
+	c.JSON(http.StatusOK, dto.MapAdviceTemplates(items))
 }
 
 func CreateAdviceTemplate(c *gin.Context) {
@@ -142,7 +151,7 @@ func CreateAdviceTemplate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create advice template"})
 		return
 	}
-	c.JSON(http.StatusCreated, item)
+	c.JSON(http.StatusCreated, dto.MapAdviceTemplate(item))
 }
 
 func UpdateAdviceTemplate(c *gin.Context) {
@@ -166,7 +175,7 @@ func UpdateAdviceTemplate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update advice template"})
 		return
 	}
-	c.JSON(http.StatusOK, item)
+	c.JSON(http.StatusOK, dto.MapAdviceTemplate(item))
 }
 
 func DeleteAdviceTemplate(c *gin.Context) {
@@ -186,7 +195,7 @@ func ListFollowupTemplates(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch followup templates"})
 		return
 	}
-	c.JSON(http.StatusOK, items)
+	c.JSON(http.StatusOK, dto.MapFollowupTemplates(items))
 }
 
 func CreateFollowupTemplate(c *gin.Context) {
@@ -203,7 +212,7 @@ func CreateFollowupTemplate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create followup template"})
 		return
 	}
-	c.JSON(http.StatusCreated, item)
+	c.JSON(http.StatusCreated, dto.MapFollowupTemplate(item))
 }
 
 func UpdateFollowupTemplate(c *gin.Context) {
@@ -227,7 +236,7 @@ func UpdateFollowupTemplate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update followup template"})
 		return
 	}
-	c.JSON(http.StatusOK, item)
+	c.JSON(http.StatusOK, dto.MapFollowupTemplate(item))
 }
 
 func DeleteFollowupTemplate(c *gin.Context) {

@@ -22,9 +22,9 @@ type PrescriptionDTO struct {
 	Notes     string                     `json:"notes"`
 	CreatedAt time.Time                  `json:"created_at"`
 	Patient   *PatientDTO                `json:"patient,omitempty"`
-	Medicines []PrescriptionMedicineDTO   `json:"medicines,omitempty"`
-	Tests     []PrescriptionTestDTO       `json:"tests,omitempty"`
-	Advices   []PrescriptionAdviceDTO     `json:"advices,omitempty"`
+	Medicines []PrescriptionMedicineDTO  `json:"medicines,omitempty"`
+	Tests     []PrescriptionTestDTO      `json:"tests,omitempty"`
+	Advices   []PrescriptionAdviceDTO    `json:"advices,omitempty"`
 	Diagnoses []PrescriptionDiagnosisDTO `json:"diagnoses,omitempty"`
 }
 
@@ -279,4 +279,20 @@ func MapDoctorProfile(p models.DoctorProfile) DoctorProfileDTO {
 		VisitingSchedule:   p.VisitingSchedule,
 		AppointmentContact: p.AppointmentContact,
 	}
+}
+
+func MapFavoriteMedicine(x models.FavoriteMedicine) FavoriteMedicineDTO {
+	return FavoriteMedicineDTO{ID: x.ID, Name: x.Name}
+}
+
+func MapFavoriteTest(x models.FavoriteTest) FavoriteTestDTO {
+	return FavoriteTestDTO{ID: x.ID, Name: x.Name}
+}
+
+func MapAdviceTemplate(x models.AdviceTemplate) AdviceTemplateDTO {
+	return AdviceTemplateDTO{ID: x.ID, Title: x.Title, Content: x.Content}
+}
+
+func MapFollowupTemplate(x models.FollowupTemplate) FollowupTemplateDTO {
+	return FollowupTemplateDTO{ID: x.ID, Title: x.Title, Value: x.Value}
 }

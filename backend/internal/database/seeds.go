@@ -8,71 +8,51 @@ import (
 	"gorm.io/gorm"
 )
 
+// seedIfEmpty inserts items only when the table has never had rows (deleted
+// rows included). Once seeded, the doctor owns the list: deleted templates do
+// not come back, and a restart never re-inserts a name that already exists.
+func seedIfEmpty[T any](tx *gorm.DB, items []T) error {
+	var count int64
+	if err := tx.Unscoped().Model(new(T)).Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
+	return tx.Create(&items).Error
+}
+
 // Seed populates the database with initial seed data in an idempotent manner
 func Seed(db *gorm.DB) error {
 	log.Println("Seeding database...")
 
 	return db.Transaction(func(tx *gorm.DB) error {
-		// 1. Seed Favorite Medicines
-		favoriteMedicines := []models.FavoriteMedicine{
-			{Name: "Comet"},
-			{Name: "Bigmet"},
-			{Name: "Metsa"},
-			{Name: "Diamicron MR"},
-			{Name: "Dimerol"},
-			{Name: "Secrin"},
-			{Name: "Lijenta"},
-			{Name: "Lijenta-M"},
-			{Name: "Glipita"},
-			{Name: "Glipita-M"},
-			{Name: "Wikitin"},
-			{Name: "Empazin"},
-			{Name: "Jardiance"},
-			{Name: "Eltroxin"},
-			{Name: "Thyrox"},
-			{Name: "Neomazole"},
-			{Name: "Thyromazol"},
-			{Name: "Progest"},
-			{Name: "Artigest"},
-			{Name: "Cabergol"},
-			{Name: "Cabaser"},
+		favoriteMedicines := []models.FavoriteMedicine{}
+		for _, name := range []string{
+			"Comet", "Bigmet", "Metsa", "Diamicron MR", "Dimerol", "Secrin",
+			"Lijenta", "Lijenta-M", "Glipita", "Glipita-M", "Wikitin", "Empazin",
+			"Jardiance", "Eltroxin", "Thyrox", "Neomazole", "Thyromazol",
+			"Progest", "Artigest", "Cabergol", "Cabaser",
+		} {
+			favoriteMedicines = append(favoriteMedicines, models.FavoriteMedicine{Name: name})
+		}
+		if err := seedIfEmpty(tx, favoriteMedicines); err != nil {
+			return fmt.Errorf("failed to seed favorite medicines: %w", err)
 		}
 
-		for _, item := range favoriteMedicines {
-			var medicine models.FavoriteMedicine
-			if err := tx.Where(models.FavoriteMedicine{Name: item.Name}).FirstOrCreate(&medicine).Error; err != nil {
-				return fmt.Errorf("failed to seed favorite medicine %s: %w", item.Name, err)
-			}
+		favoriteTests := []models.FavoriteTest{}
+		for _, name := range []string{
+			"TSH", "FT3", "FT4", "FBS", "HbA1c", "Anti-TPO Antibodies", "Prolactin",
+			"Testosterone", "LH", "FSH", "DHEA-S", "Cortisol", "ACTH",
+			"Lipid Profile", "Serum Insulin",
+		} {
+			favoriteTests = append(favoriteTests, models.FavoriteTest{Name: name})
+		}
+		if err := seedIfEmpty(tx, favoriteTests); err != nil {
+			return fmt.Errorf("failed to seed favorite tests: %w", err)
 		}
 
-		// 2. Seed Favorite Tests
-		favoriteTests := []models.FavoriteTest{
-			{Name: "TSH"},
-			{Name: "FT3"},
-			{Name: "FT4"},
-			{Name: "FBS"},
-			{Name: "HbA1c"},
-			{Name: "Anti-TPO Antibodies"},
-			{Name: "Prolactin"},
-			{Name: "Testosterone"},
-			{Name: "LH"},
-			{Name: "FSH"},
-			{Name: "DHEA-S"},
-			{Name: "Cortisol"},
-			{Name: "ACTH"},
-			{Name: "Lipid Profile"},
-			{Name: "Serum Insulin"},
-		}
-
-		for _, item := range favoriteTests {
-			var test models.FavoriteTest
-			if err := tx.Where(models.FavoriteTest{Name: item.Name}).FirstOrCreate(&test).Error; err != nil {
-				return fmt.Errorf("failed to seed favorite test %s: %w", item.Name, err)
-			}
-		}
-
-		// 3. Seed Advice Templates
-		adviceTemplates := []models.AdviceTemplate{
+		if err := seedIfEmpty(tx, []models.AdviceTemplate{
 			{
 				Title: "Diabetes Advice",
 				Content: `- Low carbohydrate diet
@@ -100,16 +80,21 @@ func Seed(db *gorm.DB) error {
 - Daily physical activity
 - Weight monitoring`,
 			},
+		}); err != nil {
+			return fmt.Errorf("failed to seed advice templates: %w", err)
 		}
 
-		for _, item := range adviceTemplates {
-			var advice models.AdviceTemplate
-			if err := tx.Where(models.AdviceTemplate{Title: item.Title}).Attrs(models.AdviceTemplate{Content: item.Content}).FirstOrCreate(&advice).Error; err != nil {
-				return fmt.Errorf("failed to seed advice template %s: %w", item.Title, err)
-			}
+		if err := seedIfEmpty(tx, []models.FollowupTemplate{
+			{Title: "2 Weeks", Value: "2 Weeks"},
+			{Title: "6 Weeks", Value: "6 Weeks"},
+			{Title: "3 Months", Value: "3 Months"},
+			{Title: "6 Months", Value: "6 Months"},
+			{Title: "12 Months", Value: "12 Months"},
+		}); err != nil {
+			return fmt.Errorf("failed to seed followup templates: %w", err)
 		}
 
-		// 4. Seed Doctor Profile (single row, id=1) — upsert: fills in any new fields
+		// Doctor Profile (single row, id=1)
 		defaultProfile := models.DoctorProfile{
 			Model:              gorm.Model{ID: 1},
 			DoctorName:         "Dr. [Doctor's Name]",
@@ -118,21 +103,21 @@ func Seed(db *gorm.DB) error {
 			RegistrationNo:     "BMDC/2026/A-12345",
 			ClinicName:         "OPD Endocrinology Clinic",
 			HospitalName:       "RxDesk Hospital, OPD-1",
-			Address:            "",
 			Phone:              "+880-2-1234567",
-			Email:              "",
 			VisitingSchedule:   "Sat-Thu: 9AM - 5PM",
 			AppointmentContact: "+880-1XXX-XXXXXX",
 		}
+
 		var existingProfile models.DoctorProfile
 		if err := tx.First(&existingProfile).Error; err != nil {
 			if err := tx.Create(&defaultProfile).Error; err != nil {
 				return fmt.Errorf("failed to seed doctor profile: %w", err)
 			}
+			existingProfile = defaultProfile
 		} else {
 			// Fill in any empty fields with seed defaults (preserves user edits)
-			updates := map[string]interface{}{}
-			if existingProfile.DoctorName == "" || existingProfile.DoctorName == "Dr. [Doctor's Name]" {
+			updates := map[string]any{}
+			if existingProfile.DoctorName == "" {
 				updates["doctor_name"] = defaultProfile.DoctorName
 			}
 			if existingProfile.Qualification == "" {
@@ -160,22 +145,6 @@ func Seed(db *gorm.DB) error {
 				if err := tx.Model(&existingProfile).Updates(updates).Error; err != nil {
 					return fmt.Errorf("failed to update seed doctor profile: %w", err)
 				}
-			}
-		}
-
-		// 5. Seed Followup Templates
-		followupTemplates := []models.FollowupTemplate{
-			{Title: "2 Weeks", Value: "2 Weeks"},
-			{Title: "6 Weeks", Value: "6 Weeks"},
-			{Title: "3 Months", Value: "3 Months"},
-			{Title: "6 Months", Value: "6 Months"},
-			{Title: "12 Months", Value: "12 Months"},
-		}
-
-		for _, item := range followupTemplates {
-			var followup models.FollowupTemplate
-			if err := tx.Where(models.FollowupTemplate{Title: item.Title}).Attrs(models.FollowupTemplate{Value: item.Value}).FirstOrCreate(&followup).Error; err != nil {
-				return fmt.Errorf("failed to seed followup template %s: %w", item.Title, err)
 			}
 		}
 
