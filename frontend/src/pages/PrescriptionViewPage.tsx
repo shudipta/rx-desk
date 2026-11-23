@@ -18,6 +18,8 @@ const lightTeal = '#e8f4f4'
 const A4_HEIGHT_MM = 297
 const PAD_TOP_MM = A4_HEIGHT_MM * 0.3 // 89.1mm
 const PAD_BOTTOM_MM = A4_HEIGHT_MM * 0.125 // 37.1mm
+// Plain paper: margin on continuation pages so text never runs to the paper edge
+const PAGE_MARGIN_MM = 10
 
 const MEAL_TIMING: Record<string, string> = {
   before: 'খাবারের আগে',
@@ -294,12 +296,12 @@ function PrescriptionViewPage() {
   const listSection = (title: string, sub: string, items?: string[]) =>
     items && items.length > 0 ? (
       <div style={styles.section}>
-        <div style={styles.sectionTitle}>
+        <div style={styles.sectionTitle} className="rx-heading">
           {title}
           {sub && <span style={styles.sectionSub}> · {sub}</span>}
         </div>
         {items.map((text, i) => (
-          <div key={i} style={styles.bullet}>• {text}</div>
+          <div key={i} style={styles.bullet} className="rx-keep">• {text}</div>
         ))}
       </div>
     ) : null
@@ -315,13 +317,31 @@ function PrescriptionViewPage() {
         @media print {
           .no-print { display: none !important; }
           body { background: #fff !important; }
-          @page { size: A4; margin: 0; }
+          ${
+            padMode
+              ? // Every pad page has the doctor info and schedule pre-printed, so
+                // long prescriptions leave those areas blank on every page.
+                `@page { size: A4; margin: ${PAD_TOP_MM}mm 0 ${PAD_BOTTOM_MM}mm; }`
+              : // Header sits flush on page 1; later pages get a margin.
+                `@page { size: A4; margin: ${PAGE_MARGIN_MM}mm 0; }
+                 @page :first { margin-top: 0; }`
+          }
           .ant-layout-sider { display: none !important; }
           .ant-layout-has-sider > .ant-layout { margin-left: 0 !important; }
           .ant-layout-has-sider > .ant-layout > div:first-child { display: none !important; }
           .ant-layout-content { padding: 0 !important; min-height: auto !important; }
-          .pad-preprinted { visibility: hidden !important; }
-          .prescription-sheet { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          /* Page margins reserve the pad areas, so the on-screen slots are dropped */
+          .pad-preprinted { display: none !important; }
+          .prescription-sheet {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            /* Fill page 1 so a short prescription keeps the footer at the bottom;
+               a long one simply flows onto more pages. */
+            min-height: ${padMode ? 'auto' : `${A4_HEIGHT_MM - PAGE_MARGIN_MM - 0.5}mm`} !important;
+          }
+          /* Never split a medicine row, a bullet or the patient box across pages */
+          .prescription-sheet tr, .rx-keep { break-inside: avoid; }
+          .rx-heading { break-after: avoid; }
         }
       `}</style>
       <div style={styles.toolbar} className="no-print">
@@ -397,7 +417,7 @@ function PrescriptionViewPage() {
         </div>
 
         <div style={styles.bodySection}>
-          <div style={styles.infoBorder}>
+          <div style={styles.infoBorder} className="rx-keep">
             <div style={styles.infoLabels}>
               <div>PATIENT NAME</div>
               <div>AGE</div>
@@ -426,7 +446,7 @@ function PrescriptionViewPage() {
             <div style={styles.rightCol}>
               {prescription.medicines?.length > 0 && (
                 <div style={styles.section}>
-                  <div style={styles.rxTitle}>Rₓ</div>
+                  <div style={styles.rxTitle} className="rx-heading">Rₓ</div>
                   <table style={styles.medicineTable}>
                     <thead>
                       <tr>
@@ -459,14 +479,14 @@ function PrescriptionViewPage() {
 
               {prescription.advices?.length > 0 && (
                 <div style={styles.section}>
-                  <div style={styles.sectionTitle}>
+                  <div style={styles.sectionTitle} className="rx-heading">
                     ADVICE &amp; INSTRUCTIONS
                     <span style={{ ...styles.sectionSub, fontFamily: bnFont }}> · পরামর্শ</span>
                   </div>
                   {prescription.advices.flatMap((a) => {
                     const lines = a.advice_text.split('\n').filter(Boolean)
                     return lines.map((line, i) => (
-                      <div key={`${a.id}-${i}`} style={{ ...styles.bullet, fontFamily: bnFont }}>• {line.replace(/^[-•]\s*/, '')}</div>
+                      <div key={`${a.id}-${i}`} style={{ ...styles.bullet, fontFamily: bnFont }} className="rx-keep">• {line.replace(/^[-•]\s*/, '')}</div>
                     ))
                   })}
                 </div>
@@ -487,7 +507,10 @@ function PrescriptionViewPage() {
           style={padMode ? { ...styles.padSlot, height: `${PAD_BOTTOM_MM}mm`, overflow: 'hidden' } : undefined}
         >
           {padMode && <div style={styles.padBadge}>Not printed · already on the pad</div>}
-          <div style={padMode ? { ...styles.footerSection, height: '100%', boxSizing: 'border-box' } : styles.footerSection}>
+          <div
+            className="rx-keep"
+            style={padMode ? { ...styles.footerSection, height: '100%', boxSizing: 'border-box' } : styles.footerSection}
+          >
             <div>
               {/* On the pad the follow-up prints in the Rx column instead */}
               {!padMode && (
