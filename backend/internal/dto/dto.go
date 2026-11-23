@@ -330,6 +330,15 @@ type DoctorProfileDTO struct {
 	Email              string `json:"email"`
 	VisitingSchedule   string `json:"visiting_schedule"`
 	AppointmentContact string `json:"appointment_contact"`
+
+	DoctorNameBn         string `json:"doctor_name_bn"`
+	QualificationBn      string `json:"qualification_bn"`
+	SpecializationBn     string `json:"specialization_bn"`
+	ClinicNameBn         string `json:"clinic_name_bn"`
+	HospitalNameBn       string `json:"hospital_name_bn"`
+	AddressBn            string `json:"address_bn"`
+	VisitingScheduleBn   string `json:"visiting_schedule_bn"`
+	AppointmentContactBn string `json:"appointment_contact_bn"`
 }
 
 func MapDoctorProfile(p models.DoctorProfile) DoctorProfileDTO {
@@ -346,5 +355,14 @@ func MapDoctorProfile(p models.DoctorProfile) DoctorProfileDTO {
 		Email:              p.Email,
 		VisitingSchedule:   p.VisitingSchedule,
 		AppointmentContact: p.AppointmentContact,
+
+		DoctorNameBn:         p.DoctorNameBn,
+		QualificationBn:      p.QualificationBn,
+		SpecializationBn:     p.SpecializationBn,
+		ClinicNameBn:         p.ClinicNameBn,
+		HospitalNameBn:       p.HospitalNameBn,
+		AddressBn:            p.AddressBn,
+		VisitingScheduleBn:   p.VisitingScheduleBn,
+		AppointmentContactBn: p.AppointmentContactBn,
 	}
 }

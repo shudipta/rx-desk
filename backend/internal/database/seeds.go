@@ -136,6 +136,15 @@ func Seed(db *gorm.DB) error {
 			VisitingSchedule:   "Sat-Thu: 9AM - 5PM",
 			AppointmentContact: "+880-1XXX-XXXXXX",
 		}
+		bangla := map[string]any{
+			"doctor_name_bn":         "ডাঃ [ডাক্তারের নাম]",
+			"qualification_bn":       "এমডি",
+			"specialization_bn":      "হরমোন ও ডায়াবেটিস রোগ বিশেষজ্ঞ",
+			"clinic_name_bn":         "ওপিডি এন্ডোক্রাইনোলজি ক্লিনিক",
+			"hospital_name_bn":       "আরএক্সডেস্ক হাসপাতাল, ওপিডি-১",
+			"visiting_schedule_bn":   "শনি-বৃহস্পতি: সকাল ৯টা - বিকাল ৫টা",
+			"appointment_contact_bn": "+৮৮০-১XXX-XXXXXX",
+		}
 
 		var existingProfile models.DoctorProfile
 		if err := tx.First(&existingProfile).Error; err != nil {
@@ -174,6 +183,17 @@ func Seed(db *gorm.DB) error {
 				if err := tx.Model(&existingProfile).Updates(updates).Error; err != nil {
 					return fmt.Errorf("failed to update seed doctor profile: %w", err)
 				}
+			}
+		}
+
+		// Bangla placeholders only while every Bangla field is still empty, so a
+		// field the doctor clears on purpose stays cleared.
+		p := existingProfile
+		if p.DoctorNameBn == "" && p.QualificationBn == "" && p.SpecializationBn == "" &&
+			p.ClinicNameBn == "" && p.HospitalNameBn == "" && p.AddressBn == "" &&
+			p.VisitingScheduleBn == "" && p.AppointmentContactBn == "" {
+			if err := tx.Model(&models.DoctorProfile{}).Where("id = ?", p.ID).Updates(bangla).Error; err != nil {
+				return fmt.Errorf("failed to seed Bangla doctor profile: %w", err)
 			}
 		}
 
