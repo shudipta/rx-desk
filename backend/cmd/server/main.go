@@ -47,6 +47,10 @@ func main() {
 
 	r.NoRoute(func(c *gin.Context) {
 		path := strings.TrimPrefix(c.Request.URL.Path, "/")
+		if path == "api" || strings.HasPrefix(path, "api/") {
+			c.JSON(404, gin.H{"error": "Not found"})
+			return
+		}
 		if path == "" {
 			c.Data(200, "text/html; charset=utf-8", indexData)
 			return

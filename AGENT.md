@@ -43,6 +43,9 @@ Frontend:
 
 # Backend APIs
 
+All endpoints below are served under `/api` (e.g. `GET /api/patients`), so no
+API path ever matches a page path. `/health` also answers at the root.
+
 ## Patient APIs
 
 GET /patients
@@ -217,11 +220,10 @@ cd backend && ./rx-desk
 # Opens on http://localhost:8080
 ```
 
-The binary embeds the built frontend. API routes take priority over SPA routes.
-- `/` → SPA
-- `/patients`, `/prescriptions/:id`, etc. → API (refresh on these shows JSON)
-- `/patients/:id/new-prescription`, `/settings`, etc. → SPA
+The binary embeds the built frontend.
+- `/api/*` → API (unknown `/api` paths return a JSON 404)
 - `/assets/*` → static files
+- everything else (`/`, `/patients/:id`, `/prescriptions/:id`, `/settings`, …) → SPA, so a browser refresh on any page works
 
 ## Verify Build
 ```bash

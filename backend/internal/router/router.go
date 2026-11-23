@@ -26,52 +26,57 @@ func SetupRouter() *gin.Engine {
 
 	// Register routes
 	r.GET("/health", handlers.HealthCheck)
+	r.GET("/api/health", handlers.HealthCheck)
+
+	// All data endpoints live under /api so they never share a path with a
+	// page: reloading /patients/5 in the browser must get the app, not JSON.
+	api := r.Group("/api")
 
 	// Dashboard stats
-	r.GET("/stats/dashboard", handlers.GetDashboardStats)
+	api.GET("/stats/dashboard", handlers.GetDashboardStats)
 
 	// Patient routes
-	r.GET("/patients", handlers.ListPatients)
-	r.GET("/patients/search", handlers.SearchPatients)
-	r.GET("/patients/:id", handlers.GetPatient)
-	r.POST("/patients", handlers.CreatePatient)
-	r.PUT("/patients/:id", handlers.UpdatePatient)
-	r.GET("/patients/:id/prescriptions", handlers.GetPatientPrescriptions)
+	api.GET("/patients", handlers.ListPatients)
+	api.GET("/patients/search", handlers.SearchPatients)
+	api.GET("/patients/:id", handlers.GetPatient)
+	api.POST("/patients", handlers.CreatePatient)
+	api.PUT("/patients/:id", handlers.UpdatePatient)
+	api.GET("/patients/:id/prescriptions", handlers.GetPatientPrescriptions)
 
 	// Prescription routes
-	r.POST("/prescriptions", handlers.CreatePrescription)
-	r.GET("/prescriptions/:id", handlers.GetPrescription)
-	r.PUT("/prescriptions/:id", handlers.UpdatePrescription)
+	api.POST("/prescriptions", handlers.CreatePrescription)
+	api.GET("/prescriptions/:id", handlers.GetPrescription)
+	api.PUT("/prescriptions/:id", handlers.UpdatePrescription)
 
 	// Doctor profile routes
-	r.GET("/doctor/profile", handlers.GetDoctorProfile)
-	r.PUT("/doctor/profile", handlers.UpdateDoctorProfile)
+	api.GET("/doctor/profile", handlers.GetDoctorProfile)
+	api.PUT("/doctor/profile", handlers.UpdateDoctorProfile)
 
 	// Template routes
-	r.GET("/favorite-medicines", handlers.ListFavoriteMedicines)
-	r.POST("/favorite-medicines", handlers.CreateFavoriteMedicine)
-	r.PUT("/favorite-medicines/:id", handlers.UpdateFavoriteMedicine)
-	r.DELETE("/favorite-medicines/:id", handlers.DeleteFavoriteMedicine)
+	api.GET("/favorite-medicines", handlers.ListFavoriteMedicines)
+	api.POST("/favorite-medicines", handlers.CreateFavoriteMedicine)
+	api.PUT("/favorite-medicines/:id", handlers.UpdateFavoriteMedicine)
+	api.DELETE("/favorite-medicines/:id", handlers.DeleteFavoriteMedicine)
 
-	r.GET("/favorite-tests", handlers.ListFavoriteTests)
-	r.POST("/favorite-tests", handlers.CreateFavoriteTest)
-	r.PUT("/favorite-tests/:id", handlers.UpdateFavoriteTest)
-	r.DELETE("/favorite-tests/:id", handlers.DeleteFavoriteTest)
+	api.GET("/favorite-tests", handlers.ListFavoriteTests)
+	api.POST("/favorite-tests", handlers.CreateFavoriteTest)
+	api.PUT("/favorite-tests/:id", handlers.UpdateFavoriteTest)
+	api.DELETE("/favorite-tests/:id", handlers.DeleteFavoriteTest)
 
-	r.GET("/advice-templates", handlers.ListAdviceTemplates)
-	r.POST("/advice-templates", handlers.CreateAdviceTemplate)
-	r.PUT("/advice-templates/:id", handlers.UpdateAdviceTemplate)
-	r.DELETE("/advice-templates/:id", handlers.DeleteAdviceTemplate)
+	api.GET("/advice-templates", handlers.ListAdviceTemplates)
+	api.POST("/advice-templates", handlers.CreateAdviceTemplate)
+	api.PUT("/advice-templates/:id", handlers.UpdateAdviceTemplate)
+	api.DELETE("/advice-templates/:id", handlers.DeleteAdviceTemplate)
 
-	r.GET("/followup-templates", handlers.ListFollowupTemplates)
-	r.POST("/followup-templates", handlers.CreateFollowupTemplate)
-	r.PUT("/followup-templates/:id", handlers.UpdateFollowupTemplate)
-	r.DELETE("/followup-templates/:id", handlers.DeleteFollowupTemplate)
+	api.GET("/followup-templates", handlers.ListFollowupTemplates)
+	api.POST("/followup-templates", handlers.CreateFollowupTemplate)
+	api.PUT("/followup-templates/:id", handlers.UpdateFollowupTemplate)
+	api.DELETE("/followup-templates/:id", handlers.DeleteFollowupTemplate)
 
-	r.GET("/clinical-templates", handlers.ListClinicalTemplates)
-	r.POST("/clinical-templates", handlers.CreateClinicalTemplate)
-	r.PUT("/clinical-templates/:id", handlers.UpdateClinicalTemplate)
-	r.DELETE("/clinical-templates/:id", handlers.DeleteClinicalTemplate)
+	api.GET("/clinical-templates", handlers.ListClinicalTemplates)
+	api.POST("/clinical-templates", handlers.CreateClinicalTemplate)
+	api.PUT("/clinical-templates/:id", handlers.UpdateClinicalTemplate)
+	api.DELETE("/clinical-templates/:id", handlers.DeleteClinicalTemplate)
 
 	return r
 }
